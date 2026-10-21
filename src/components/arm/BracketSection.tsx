@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { GROUP_LABEL, HAND_LABEL, HAND_ORDER, Hand, Match, bracketKey, classOf, standings, surname, tournamentYear, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
+import JudgeSheetsButton from "./JudgeSheetsButton";
 
 export default function BracketSection() {
   const { athletes, groups, tournament, brackets, matches, amap, draw, drawAll, clearDraw, setWinner } = useStore();
@@ -84,6 +85,7 @@ export default function BracketSection() {
           })}
           {!keys.length && <div className="p-6 text-center text-panel-muted">Нет взвешенных участников</div>}
         </div>
+        <JudgeSheetsButton currentKey={active} />
         {brackets.length > 0 && (
           <button className="pill self-start" onClick={() => confirm("Сбросить все сетки и результаты?") && clearDraw()}>
             <Icon name="RotateCcw" size={15} /> Сбросить все сетки
