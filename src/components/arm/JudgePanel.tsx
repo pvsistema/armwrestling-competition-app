@@ -42,7 +42,7 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
     return (
       <section className="flex flex-1 flex-col items-center justify-center rounded-lg bg-frame p-2.5">
         <div className="win w-full flex-1 items-center justify-center gap-4 p-10 text-center">
-          <Icon name="Trophy" size={44} className="text-tip" />
+          <Icon name="Trophy" size={44} className="text-primary" />
           <h1 className="text-[32px] font-medium leading-tight md:text-[44px]">
             {brackets.length ? "Все схватки проведены" : "Сетки ещё не построены"}
           </h1>
@@ -76,7 +76,7 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
     const a = amap[id];
     const losses = st[id]?.losses ?? 0;
     return (
-      <div className={cn("win", flash === id && "animate-win-flash")}>
+      <div className={cn("win border-t-4", corner === "blue" ? "border-t-corner-blue" : "border-t-corner-red", flash === id && "animate-win-flash")}>
         <div className="win-bar">
           <i />
           <i />
@@ -99,7 +99,10 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
           </p>
           <button
             onClick={() => decide(current, id)}
-            className="mt-auto rounded-full bg-primary p-4 text-center text-[1.1em] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
+            className={cn(
+              "mt-auto rounded-full p-4 text-center text-[1.1em] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98]",
+              corner === "blue" ? "bg-corner-blue" : "bg-corner-red",
+            )}
             style={{ marginTop: "auto" }}
           >
             Победил

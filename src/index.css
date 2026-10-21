@@ -4,79 +4,61 @@
 
 @layer base {
   :root {
-    /* Вариант 4: оливковая подложка, тёмные окна в медной раме, синие пилюли */
-    --cream: 38 61% 91%;
-    --background: 60 17% 25%;
-    --foreground: 40 41% 92%;
+    /* Светлая тема в цветах триколора: белый фон, спокойный синий, сдержанный красный */
+    --cream: 216 33% 94%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 16%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 40 41% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 16%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 40 41% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 16%;
 
-    --primary: 220 100% 50%;
+    --primary: 220 70% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 60 12% 32%;
-    --secondary-foreground: 40 41% 92%;
+    --secondary: 214 40% 94%;
+    --secondary-foreground: 222 47% 16%;
 
-    --muted: 60 12% 30%;
-    --muted-foreground: 45 18% 76%;
+    --muted: 214 35% 95%;
+    --muted-foreground: 218 15% 40%;
 
-    --accent: 60 12% 35%;
-    --accent-foreground: 40 41% 95%;
+    --accent: 214 50% 93%;
+    --accent-foreground: 222 47% 16%;
 
-    --destructive: 351 69% 52%;
+    --destructive: 354 68% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 60 9% 40%;
-    --input: 60 9% 40%;
-    --ring: 220 100% 60%;
+    --border: 214 25% 86%;
+    --input: 214 25% 84%;
+    --ring: 220 70% 45%;
 
     --radius: 22px;
 
-    --frame: 24 44% 58%;
-    --panel: 0 0% 7%;
-    --surface: 0 0% 10%;
-    --line: 0 0% 17%;
-    --panel-muted: 60 4% 62%;
-    --tip: 44 100% 92%;
-    --tip-foreground: 0 0% 10%;
-    --corner-red: 351 69% 60%;
-    --corner-blue: 220 100% 62%;
+    --frame: 215 45% 89%;
+    --panel: 0 0% 100%;
+    --surface: 214 40% 97%;
+    --line: 214 25% 87%;
+    --panel-muted: 218 15% 40%;
+    --tip: 214 85% 93%;
+    --tip-foreground: 222 60% 20%;
+    --corner-red: 354 68% 45%;
+    --corner-blue: 220 70% 42%;
+    --flag-white: 0 0% 100%;
+    --flag-blue: 220 70% 40%;
+    --flag-red: 354 68% 47%;
 
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 40 41% 92%;
-    --sidebar-primary: 220 100% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 16%;
+    --sidebar-primary: 220 70% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 60 12% 32%;
-    --sidebar-accent-foreground: 40 41% 92%;
-    --sidebar-border: 0 0% 17%;
-    --sidebar-ring: 220 100% 60%;
+    --sidebar-accent: 214 40% 94%;
+    --sidebar-accent-foreground: 222 47% 16%;
+    --sidebar-border: 214 25% 87%;
+    --sidebar-ring: 220 70% 45%;
   }
 
-  .dark {
-    --background: 60 17% 25%;
-    --foreground: 40 41% 92%;
-    --card: 0 0% 7%;
-    --card-foreground: 40 41% 92%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 40 41% 92%;
-    --primary: 220 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 60 12% 32%;
-    --secondary-foreground: 40 41% 92%;
-    --muted: 60 12% 30%;
-    --muted-foreground: 45 18% 76%;
-    --accent: 60 12% 35%;
-    --accent-foreground: 40 41% 95%;
-    --destructive: 351 69% 52%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 60 9% 40%;
-    --input: 60 9% 40%;
-    --ring: 220 100% 60%;
-  }
 }
 
 @layer base {
@@ -102,16 +84,26 @@
 
 @layer components {
   .pill {
-    @apply inline-flex items-center gap-2 rounded-full bg-foreground/10 px-[18px] py-[10px] text-[0.93em] font-medium text-foreground transition-colors hover:bg-foreground/20;
+    @apply inline-flex items-center gap-2 rounded-full border border-line bg-panel px-[18px] py-[10px] text-[0.93em] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent;
   }
   .pill-on {
-    @apply bg-foreground text-background hover:bg-foreground;
+    @apply border-primary bg-primary text-primary-foreground hover:bg-primary hover:border-primary;
   }
   .btn-blue {
     @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
   }
   .win {
-    @apply flex flex-col overflow-hidden rounded-[6px] bg-panel text-foreground;
+    @apply flex flex-col overflow-hidden rounded-[6px] border border-line bg-panel text-foreground shadow-[0_1px_3px_rgba(20,40,90,0.06)];
+  }
+  .tricolor {
+    height: 4px;
+    background: linear-gradient(
+      to right,
+      hsl(var(--flag-white)) 0 33.33%,
+      hsl(var(--flag-blue)) 33.33% 66.66%,
+      hsl(var(--flag-red)) 66.66% 100%
+    );
+    box-shadow: inset 0 0 0 1px hsl(var(--line));
   }
   .win-bar {
     @apply flex h-[30px] shrink-0 items-center gap-1.5 border-b border-line bg-surface px-3;

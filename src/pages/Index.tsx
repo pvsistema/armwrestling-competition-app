@@ -22,14 +22,14 @@ function Shell() {
   const right = (
     <>
       {section === "judge" && (
-        <div className="flex rounded-full bg-foreground/10 p-1">
+        <div className="flex rounded-full border border-line bg-surface p-1">
           {tables.map((t) => (
             <button
               key={String(t)}
               onClick={() => setTable(t)}
               className={cn(
                 "rounded-full px-3 py-1.5 text-[0.9em] font-medium transition-colors",
-                table === t ? "bg-foreground text-background" : "hover:bg-foreground/10",
+                table === t ? "bg-primary text-primary-foreground" : "hover:bg-accent",
               )}
             >
               {t === "all" ? "Все столы" : `Стол ${t}`}
@@ -45,7 +45,8 @@ function Shell() {
 
   return (
     <div className="min-h-screen p-2 pb-6 sm:px-3 print:bg-white print:p-0">
-      <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 rounded-stage bg-background px-4 pb-7 pt-5 text-foreground sm:px-10 print:min-h-0 print:rounded-none print:bg-white print:p-0 print:text-black">
+      <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 overflow-hidden rounded-stage border border-line bg-background px-4 pb-7 pt-0 text-foreground shadow-sm sm:px-10 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
+        <div className="tricolor -mx-4 mb-1 sm:-mx-10 print:hidden" />
         <AppHeader section={section} onSection={setSection} right={right} />
         <main className="flex flex-1 flex-col gap-4">
           {section === "judge" && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}

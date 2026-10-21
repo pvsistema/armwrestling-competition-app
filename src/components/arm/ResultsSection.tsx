@@ -170,8 +170,8 @@ export default function ResultsSection() {
                               className={cn(
                                 "inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-semibold print:bg-transparent print:text-black",
                                 b.done && r.place === 1 && "bg-tip text-tip-foreground",
-                                b.done && r.place === 2 && "bg-foreground/80 text-panel",
-                                b.done && r.place === 3 && "bg-frame text-tip-foreground",
+                                b.done && r.place === 2 && "bg-line text-foreground",
+                                b.done && r.place === 3 && "bg-corner-red/15 text-corner-red",
                               )}
                             >
                               {r.place}

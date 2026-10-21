@@ -43,7 +43,7 @@ export default function AppHeader({ section, onSection, right }: Props) {
           >
             {s.label}
             {section === s.id && (
-              <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-foreground" />
+              <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-corner-red" />
             )}
           </button>
         ))}

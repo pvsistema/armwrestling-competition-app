@@ -74,7 +74,7 @@ export default function BracketSection() {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 font-mono text-[11px]",
-                    !b ? "bg-line text-panel-muted" : b.done ? "bg-tip text-tip-foreground" : "bg-foreground/15",
+                    !b ? "bg-line text-panel-muted" : b.done ? "bg-tip text-tip-foreground" : "bg-accent",
                   )}
                 >
                   {!b ? "нет" : b.done ? "итог" : `ост. ${left}`}
@@ -120,7 +120,7 @@ export default function BracketSection() {
                     key={id}
                     className={cn(
                       "rounded-full px-3 py-1.5 text-sm",
-                      st[id].losses >= 2 ? "bg-foreground/5 text-foreground/50 line-through" : st[id].losses === 1 ? "bg-foreground/15" : "bg-panel",
+                      st[id].losses >= 2 ? "bg-foreground/5 text-foreground/50 line-through" : st[id].losses === 1 ? "bg-corner-red/10" : "bg-panel",
                     )}
                   >
                     {surname(amap[id]?.name ?? "?")}

@@ -125,7 +125,7 @@ export default function BoardSection() {
                 const loser = m.winner === m.a ? m.b : m.a;
                 return (
                   <div key={m.id} className="flex items-center gap-2 rounded-full bg-surface px-4 py-2">
-                    <Icon name="Trophy" size={16} className="text-tip" />
+                    <Icon name="Trophy" size={16} className="text-primary" />
                     <span className="font-medium">{surname(amap[m.winner!]?.name ?? "")}</span>
                     <span className="text-panel-muted">победил {surname(amap[loser]?.name ?? "")}</span>
                   </div>

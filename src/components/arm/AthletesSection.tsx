@@ -280,7 +280,7 @@ function Row({
           inputMode="decimal"
           className={cn(
             "h-8 w-24 rounded-full border bg-surface px-3 font-mono text-sm outline-none focus:border-primary",
-            a.weight == null ? "border-tip/60 placeholder:text-tip/80" : "border-line",
+            a.weight == null ? "border-corner-red/50 placeholder:text-corner-red/70" : "border-line",
           )}
           title={a.weight != null ? `${fmtKg(a.weight)} кг` : "Введите вес и нажмите Enter"}
         />
@@ -323,7 +323,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 export function Stat({ label, value, accent }: { label: string; value: number | string; accent?: boolean }) {
   return (
     <div className="rounded-lg bg-panel px-4 py-3">
-      <div className={cn("text-3xl font-medium tracking-tight", accent && "text-tip")}>{value}</div>
+      <div className={cn("text-3xl font-medium tracking-tight", accent && "text-corner-red")}>{value}</div>
       <div className="cat mt-0.5">{label}</div>
     </div>
   );
