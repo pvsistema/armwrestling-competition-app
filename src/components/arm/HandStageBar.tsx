@@ -27,7 +27,7 @@ export default function HandStageBar({ table }: { table: number | "all" }) {
   return (
     <div
       className={cn(
-        "win flex-row flex-wrap items-center gap-3 px-4 py-2.5 print:hidden",
+        "win flex-row flex-wrap items-center gap-3 px-3 py-1.5 print:hidden",
         left === 0 && total > 0 && "border-2 border-tip bg-tip/30",
       )}
     >

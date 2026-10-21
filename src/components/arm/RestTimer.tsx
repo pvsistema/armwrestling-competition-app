@@ -12,13 +12,13 @@ export function TimerControls({ table }: { table: number }) {
   const presets = restPresets(tournament);
   const t = get(table);
   return (
-    <div className="win flex-row flex-wrap items-center gap-2 px-4 py-2.5">
+    <div className="win flex-row flex-wrap items-center gap-2 px-3 py-1.5">
       <Icon name="Timer" size={18} className="text-primary" />
       <span className="mr-1 text-sm font-medium">Отдых, стол {table}:</span>
       {presets.map((p) => (
         <button
           key={p.kind}
-          className={cn("pill !py-2", t?.kind === p.kind && !t.done && "pill-on")}
+          className={cn("pill !py-1.5", t?.kind === p.kind && !t.done && "pill-on")}
           onClick={() => start(table, p.kind, p.seconds)}
           title={p.hint}
         >
@@ -31,7 +31,7 @@ export function TimerControls({ table }: { table: number }) {
           <span className={cn("ml-2 font-mono text-2xl font-semibold tabular-nums", t.done ? "text-corner-red" : t.left <= 10 ? "text-corner-red" : "text-foreground")}>
             {t.done ? "Время!" : fmtSec(t.left)}
           </span>
-          <button className="pill !py-2" onClick={() => stop(table)} title="Остановить таймер">
+          <button className="pill !py-1.5" onClick={() => stop(table)} title="Остановить таймер">
             <Icon name="Square" size={14} /> Стоп
           </button>
         </>
@@ -140,7 +140,7 @@ function CustomRest({ table, active, onStart }: { table: number; active: boolean
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className={cn("pill !py-2", active && "pill-on")} title="Задать любое время отдыха">
+        <button className={cn("pill !py-1.5", active && "pill-on")} title="Задать любое время отдыха">
           <Icon name="SlidersHorizontal" size={14} /> Свой
         </button>
       </PopoverTrigger>
