@@ -53,7 +53,7 @@ export function useTimers() {
 
   const start = useCallback((table: number, kind: TableTimer["kind"], customSec?: number) => {
     const p = TIMER_PRESETS.find((x) => x.kind === kind);
-    const seconds = kind === "custom" ? Math.max(5, Math.min(3600, Math.round(customSec ?? 60))) : p!.seconds;
+    const seconds = customSec != null ? Math.max(5, Math.min(3600, Math.round(customSec))) : p!.seconds;
     const next = { ...read(), [table]: { kind, seconds, endsAt: Date.now() + seconds * 1000, label: p?.hint ?? "Свой отдых" } };
     write(next);
     setAll(next);
@@ -79,6 +79,21 @@ export function useTimers() {
   );
 
   return { start, stop, get };
+}
+
+/** Длительности отдыха из настроек турнира (по умолчанию 30 сек и 2 мин). */
+export function restPresets(t: { restShort?: number; restLong?: number }) {
+  const short = t.restShort && t.restShort >= 5 ? t.restShort : 30;
+  const long = t.restLong && t.restLong >= 5 ? t.restLong : 120;
+  return TIMER_PRESETS.map((p) => {
+    const seconds = p.kind === "rest30" ? short : long;
+    return { ...p, seconds, label: shortLabel(seconds) };
+  });
+}
+
+export function shortLabel(sec: number) {
+  if (sec < 60) return `${sec} сек`;
+  return sec % 60 ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` : `${sec / 60} мин`;
 }
 
 const CKEY = "armsport-custom-rest";

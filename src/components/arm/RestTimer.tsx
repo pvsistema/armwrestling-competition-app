@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Icon from "@/components/ui/icon";
-import { TIMER_PRESETS, beep, fmtSec, lastCustomRest, restLabel, saveCustomRest, useTimers } from "@/lib/timers";
+import { beep, restPresets, shortLabel, fmtSec, lastCustomRest, restLabel, saveCustomRest, useTimers } from "@/lib/timers";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/lib/store";
 
 /** Кнопки запуска таймера отдыха на пульте судьи. */
 export function TimerControls({ table }: { table: number }) {
   const { start, stop, get } = useTimers();
+  const { tournament } = useStore();
+  const presets = restPresets(tournament);
   const t = get(table);
   return (
     <div className="win flex-row flex-wrap items-center gap-2 px-4 py-2.5">
       <Icon name="Timer" size={18} className="text-primary" />
       <span className="mr-1 text-sm font-medium">Отдых, стол {table}:</span>
-      {TIMER_PRESETS.map((p) => (
+      {presets.map((p) => (
         <button
           key={p.kind}
           className={cn("pill !py-2", t?.kind === p.kind && !t.done && "pill-on")}
-          onClick={() => start(table, p.kind)}
+          onClick={() => start(table, p.kind, p.seconds)}
           title={p.hint}
         >
           {p.label}
@@ -33,7 +36,7 @@ export function TimerControls({ table }: { table: number }) {
           </button>
         </>
       )}
-      <span className="ml-auto hidden text-xs text-panel-muted xl:inline">Таймер сразу виден на табло. Клавиши: T — 30 сек, Y — 2 мин, U — свой.</span>
+      <span className="ml-auto hidden text-xs text-panel-muted xl:inline">Таймер сразу виден на табло. Клавиши: T — {presets[0].label}, Y — {presets[1].label}, U — свой.</span>
     </div>
   );
 }
@@ -146,7 +149,7 @@ function CustomRest({ table, active, onStart }: { table: number; active: boolean
         <div className="mb-3 grid grid-cols-3 gap-1.5">
           {QUICK.map((q) => (
             <button key={q} className="pill !justify-center !px-2 !py-1.5 text-sm" onClick={() => go(q)}>
-              {q < 60 ? `${q} сек` : q % 60 ? `${Math.floor(q / 60)}:${String(q % 60).padStart(2, "0")}` : `${q / 60} мин`}
+              {shortLabel(q)}
             </button>
           ))}
         </div>

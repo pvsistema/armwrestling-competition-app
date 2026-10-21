@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
 import { AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, classOf, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
+import { shortLabel } from "@/lib/timers";
 
 export default function ClassesSection() {
   const { groups, setGroups, athletes, tournament, setTournament } = useStore();
@@ -90,6 +91,7 @@ export default function ClassesSection() {
             >
               <Icon name={(tournament.showLogo ?? true) ? "SquareCheck" : "Square"} size={15} /> Эмблема ФАР в шапке, протоколах и на табло
             </button>
+            <RestSettings />
             <L label="Требования для разрядов (печатается в протоколе)">
               <textarea className="field min-h-[72px] py-2" value={tournament.requirements ?? ""} onChange={(e) => setTournament({ requirements: e.target.value })} placeholder="КМС — 1 место при не менее 8 участниках в категории…" />
             </L>
@@ -280,6 +282,59 @@ function ScoringCard() {
           Вернуть стандартные ({DEFAULT_POINTS.join(", ")})
         </button>
       </div>
+    </div>
+  );
+}
+
+function RestSettings() {
+  const { tournament, setTournament } = useStore();
+  const row = (key: "restShort" | "restLong", title: string, hint: string, def: number, opts: number[]) => {
+    const v = tournament[key] ?? def;
+    const set = (n: number) => setTournament({ [key]: Math.max(5, Math.min(3600, n)) });
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div className="leading-tight">
+          <div className="text-sm font-medium">{title}</div>
+          <div className="text-xs text-panel-muted">{hint}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {opts.map((o) => (
+            <button key={o} type="button" className={cn("pill !px-3 !py-1 text-xs", v === o && "pill-on")} onClick={() => set(o)}>
+              {shortLabel(o)}
+            </button>
+          ))}
+          <span className="ml-1 flex items-center gap-1 text-xs text-panel-muted">
+            или
+            <input
+              type="number"
+              min={5}
+              max={3600}
+              className="field !h-8 !w-20 !px-2 text-center font-mono"
+              value={v}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (Number.isFinite(n)) set(n);
+              }}
+            />
+            сек
+          </span>
+        </div>
+      </div>
+    );
+  };
+  const changed = (tournament.restShort ?? 30) !== 30 || (tournament.restLong ?? 120) !== 120;
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-line p-3">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <Icon name="Timer" size={16} className="text-primary" /> Таймеры отдыха по регламенту
+      </div>
+      {changed && (
+          <button type="button" className="-mt-2 self-start text-xs font-normal text-primary hover:underline" onClick={() => setTournament({ restShort: 30, restLong: 120 })}>
+            вернуть 30 сек / 2 мин
+          </button>
+      )}
+      {row("restShort", "Короткий отдых (клавиша T)", "после ситуации в поединке", 30, [15, 30, 45, 60])}
+      {row("restLong", "Длинный отдых (клавиша Y)", "между схватками", 120, [60, 90, 120, 180, 300])}
     </div>
   );
 }

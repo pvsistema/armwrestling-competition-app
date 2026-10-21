@@ -6,7 +6,7 @@ import { pendingQueue } from "@/lib/queue";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { TimerControls } from "./RestTimer";
-import { useTimers } from "@/lib/timers";
+import { restPresets, useTimers } from "@/lib/timers";
 
 interface Props {
   table: number | "all";
@@ -14,7 +14,8 @@ interface Props {
 }
 
 export default function JudgePanel({ table, onGoBracket }: Props) {
-  const { matches, brackets, amap, setWinner, undo, canUndo } = useStore();
+  const { matches, brackets, amap, setWinner, undo, canUndo, tournament } = useStore();
+  const presets = restPresets(tournament);
   const classMap = useClassMap();
   const queue = useMemo(() => pendingQueue(matches, table), [matches, table]);
   const current = queue[0];
@@ -35,8 +36,8 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
       if (!current) return;
       if (e.key === "1" || e.key === "ArrowLeft") decide(current, current.a);
       if (e.key === "2" || e.key === "ArrowRight") decide(current, current.b);
-      if (e.key === "t" || e.key === "T" || e.key === "е" || e.key === "Е") timers.start(current.table, "rest30");
-      if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") timers.start(current.table, "rest120");
+      if (e.key === "t" || e.key === "T" || e.key === "е" || e.key === "Е") timers.start(current.table, "rest30", presets[0].seconds);
+      if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") timers.start(current.table, "rest120", presets[1].seconds);
       if (e.key === "u" || e.key === "U" || e.key === "г" || e.key === "Г") {
         e.preventDefault();
         window.dispatchEvent(new Event(`custom-rest-${current.table}`));

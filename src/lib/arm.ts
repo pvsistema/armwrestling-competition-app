@@ -90,6 +90,8 @@ export interface Tournament {
   teamBestOnly?: boolean;
   judges?: Judge[];
   showLogo?: boolean;
+  restShort?: number;
+  restLong?: number;
 }
 
 export interface Judge {
