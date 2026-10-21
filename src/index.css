@@ -58,7 +58,6 @@
     --sidebar-border: 214 25% 87%;
     --sidebar-ring: 220 70% 45%;
   }
-
 }
 
 @layer base {
@@ -129,6 +128,28 @@
   @page {
     size: A4;
     margin: 14mm;
+    @top-left {
+      content: "";
+    }
+    @top-center {
+      content: "";
+    }
+    @top-right {
+      content: "";
+    }
+    @bottom-left {
+      content: "";
+    }
+    @bottom-center {
+      content: "";
+    }
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font:
+        9pt "Times New Roman",
+        serif;
+      color: #000;
+    }
   }
   body {
     background: #fff !important;
