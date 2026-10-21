@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { shortLabel } from "@/lib/timers";
 
@@ -412,14 +412,19 @@ function SystemCard() {
             </button>
           ))}
         </div>
-        <button
-          className={cn("pill justify-start", (tournament.handStages ?? true) && "pill-on")}
-          onClick={() => setTournament({ handStages: !(tournament.handStages ?? true), secondHandOpen: false })}
-        >
-          <Icon name={(tournament.handStages ?? true) ? "SquareCheck" : "Square"} size={15} /> Вторая рука — после окончания первой на всех столах
-        </button>
+        <div className="flex flex-col gap-1.5">
+          {(Object.keys(HAND_FLOW_LABEL) as HandFlow[]).map((f) => (
+            <button
+              key={f}
+              className={cn("pill justify-start text-left text-sm", handFlowOf(tournament) === f && "pill-on")}
+              onClick={() => setTournament({ handFlow: f, secondHandOpen: false })}
+            >
+              {HAND_FLOW_LABEL[f]}
+            </button>
+          ))}
+        </div>
         <p className="text-xs leading-relaxed text-panel-muted">
-          Весовая категория закрепляется за одним столом на обе руки. Пока не закончена первая рука во всех категориях, пульт и табло не выдают схватки второй.
+          Весовая категория закрепляется за одним столом на обе руки. Когда стол закончил первую руку, на табло показывается перерыв с победителями — до вызова первой пары второй руки.
         </p>
 
         <div className="mt-1 border-t border-line pt-3 text-sm font-medium">Провес при допуске в категорию (п. 8.8)</div>

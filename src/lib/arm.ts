@@ -126,11 +126,22 @@ export interface Tournament {
   requireAdmit?: boolean;
   /** С какой руки начинается турнир (п. 1.1 — по Положению). */
   firstHand?: Hand;
-  /** true — вторая рука начинается только после окончания первой на всех столах. */
+  /** Устарело: true — вторая рука после окончания первой на всех столах. */
   handStages?: boolean;
+  /** table — стол закончил первую руку и сразу начинает вторую; all — ждём все столы; free — без ограничений. */
+  handFlow?: HandFlow;
   /** Секретарь вручную разрешил начать вторую руку раньше. */
   secondHandOpen?: boolean;
 }
+
+export type HandFlow = "table" | "all" | "free";
+export const HAND_FLOW_LABEL: Record<HandFlow, string> = {
+  table: "Стол закончил первую руку — сразу начинает вторую",
+  all: "Вторая рука — после окончания первой на всех столах",
+  free: "Без ограничений (руки вперемешку по готовности)",
+};
+export const handFlowOf = (t: Pick<Tournament, "handFlow" | "handStages">): HandFlow =>
+  t.handFlow ?? (t.handStages === false ? "free" : "table");
 
 export const firstHandOf = (t: Pick<Tournament, "firstHand">): Hand => t.firstHand ?? "left";
 export const secondHandOf = (t: Pick<Tournament, "firstHand">): Hand => (firstHandOf(t) === "left" ? "right" : "left");

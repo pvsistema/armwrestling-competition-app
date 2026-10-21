@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
-import { handStage, pendingQueue, waitingSecond } from "@/lib/queue";
+import { globalBreak, handStage, pendingQueue, tableBreak, waitingSecond } from "@/lib/queue";
+import HandBreak from "./HandBreak";
 import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
@@ -110,10 +111,12 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
 
   const stage = handStage(matches, tournament);
   const stageText =
-    (tournament.handStages ?? true) && stage.firstTotal > 0
+    stage.flow !== "free" && stage.firstTotal > 0
       ? stage.firstLeft > 0
-        ? `Этап 1 · ${HAND_LABEL[stage.first]} рука`
-        : `Этап 2 · ${HAND_LABEL[stage.second]} рука`
+        ? stage.flow === "all" || !stage.secondStarted
+          ? `${stage.first === "left" ? "Левая" : "Правая"} рука`
+          : `${stage.first === "left" ? "Левая" : "Правая"} и ${HAND_LABEL[stage.second]} рука`
+        : `${stage.second === "left" ? "Левая" : "Правая"} рука`
       : "";
 
   const label = (key: string) => {
@@ -153,7 +156,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         </div>
       </header>
 
-      {focusTable === "all" && tables > 1 ? (
+      {focusTable === "all" && tables > 1 && globalBreak(matches, tournament) && !lastOf("all").some((m) => fresh(m)) ? (
+        <HandBreak first={stage.first} second={stage.second} size="hero" />
+      ) : focusTable === "all" && tables > 1 ? (
         <div className={cn("grid min-h-0 flex-1 gap-3 md:gap-4", GRID[tables] ?? "grid-cols-1 md:grid-cols-4")}>
           {Array.from({ length: tables }, (_, i) => i + 1).map((t) => (
             tableCard(t, () => onFocus(t), tables > 4)
@@ -171,6 +176,8 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     const next = q.slice(1, compact ? 3 : 4);
     const last = lastOf(table)[0];
     const resting = !!timers.get(table);
+    const onBreak = stage.flow !== "free" && tableBreak(matches, table, tournament) && !cur?.calledAt;
+    const showAll = fresh(last) || onBreak;
     return (
       <button
         key={table}
@@ -196,6 +203,8 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           </div>
         ) : fresh(last) ? (
           <div className="flex flex-1 p-3">{winnerBanner(last, false)}</div>
+        ) : onBreak ? (
+          <HandBreak first={stage.first} second={stage.second} table={table} size="card" />
         ) : cur ? (
           <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
             {callBadge(cur, false)}
@@ -212,15 +221,15 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         )}
         <div className="border-t border-line bg-surface/60 px-4 py-2.5">
           <div className="mb-1 font-mono text-xs text-panel-muted">СЛЕДУЮЩИЕ ПАРЫ</div>
-          {(fresh(last) ? q.slice(0, next.length + 1) : next).map((m, i) => (
+          {(showAll ? q.slice(0, next.length + 1) : next).map((m, i) => (
             <div key={m.id} className="flex items-baseline gap-2 text-base md:text-lg">
-              <span className="w-5 shrink-0 font-mono text-xs text-panel-muted">{i + (fresh(last) ? 1 : 2)}.</span>
+              <span className="w-5 shrink-0 font-mono text-xs text-panel-muted">{i + (showAll ? 1 : 2)}.</span>
               <span className="truncate font-medium">
                 {surname(amap[m.a]?.name ?? "")} — {surname(amap[m.b]?.name ?? "")}
               </span>
             </div>
           ))}
-          {!next.length && !fresh(last) && (
+          {!next.length && !showAll && (
             <div className="text-sm text-panel-muted">{cur ? "Следующий тур составится после окончания текущего" : "—"}</div>
           )}
           {last && !fresh(last) && (
@@ -255,7 +264,12 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     const lastOne = lastOf(t)[0];
     const showWin = fresh(lastOne);
     const current = queue[0];
-    const next = showWin ? queue.slice(0, 4) : queue.slice(1, 5);
+    const onBreak =
+      !showWin &&
+      stage.flow !== "free" &&
+      !current?.calledAt &&
+      (single ? globalBreak(matches, tournament) : tableBreak(matches, table, tournament));
+    const next = showWin || onBreak ? queue.slice(0, 4) : queue.slice(1, 5);
     const last = matches
       .filter((m) => m.winner && (t === "all" || m.table === t))
       .sort((a, b) => ((b as { decidedAt?: number }).decidedAt ?? 0) - ((a as { decidedAt?: number }).decidedAt ?? 0))
@@ -275,6 +289,8 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           </div>
         ) : showWin ? (
           winnerBanner(lastOne, true)
+        ) : onBreak ? (
+          <HandBreak first={stage.first} second={stage.second} table={single ? undefined : table} size="hero" />
         ) : current ? (
           <div className="flex flex-1 flex-col justify-center rounded-lg border border-line bg-frame p-3">
             <div className="mb-3">{callBadge(current, true)}</div>
@@ -320,7 +336,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
               {next.map((m, i) => (
                 <div key={m.id} className="rounded-lg border border-line bg-panel px-4 py-3">
                   <div className="cat">
-                    #{i + (showWin ? 1 : 2)} · {label(m.key)}
+                    #{i + (showWin || onBreak ? 1 : 2)} · {label(m.key)}
                   </div>
                   <div className="mt-1 text-xl font-medium md:text-3xl">
                     {surname(amap[m.a]?.name ?? "")} — {surname(amap[m.b]?.name ?? "")}
