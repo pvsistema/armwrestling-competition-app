@@ -30,6 +30,19 @@ export default function TournamentFileButtons() {
     }
   };
 
+  const onTest = async () => {
+    if (!confirm("Загрузить тестовый турнир на 20 участников для проверки? Текущие данные на этом компьютере будут заменены — сначала сохраните их в файл, если нужно.")) return;
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}test-tournament.json`, { cache: "no-store" });
+      const blob = await r.blob();
+      const data = await readTournamentFile(new File([blob], "test.json"));
+      importData(data);
+      toast({ title: "Тестовый турнир загружен", description: "Неявка, 2 фола, травма, равенство, п. 2.7, олимпийская и круговая системы." });
+    } catch (err) {
+      toast({ title: "Не удалось загрузить тест", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
   return (
     <>
       <button className="pill" onClick={onSave}>
@@ -37,6 +50,9 @@ export default function TournamentFileButtons() {
       </button>
       <button className="pill" onClick={() => input.current?.click()}>
         <Icon name="FolderOpen" size={15} /> Открыть из файла
+      </button>
+      <button className="pill" onClick={onTest} title="Турнир с готовыми спорными случаями для проверки программы">
+        <Icon name="FlaskConical" size={15} /> Тестовый турнир
       </button>
       <input ref={input} type="file" accept=".json,application/json" className="hidden" onChange={onFile} />
     </>
