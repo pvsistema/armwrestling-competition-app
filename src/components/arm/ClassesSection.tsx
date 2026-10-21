@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, classOf, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, classOf, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 
 export default function ClassesSection() {
@@ -55,11 +55,36 @@ export default function ClassesSection() {
             <L label="Место проведения">
               <input className="field" value={tournament.place} onChange={(e) => setTournament({ place: e.target.value })} />
             </L>
-            <L label="Главный судья">
-              <input className="field" value={tournament.chiefJudge} onChange={(e) => setTournament({ chiefJudge: e.target.value })} placeholder="Фамилия И.О." />
+            <L label="Дата окончания (если турнир несколько дней)">
+              <input type="date" className="field" value={tournament.dateEnd ?? ""} onChange={(e) => setTournament({ dateEnd: e.target.value })} />
             </L>
-            <L label="Главный секретарь">
-              <input className="field" value={tournament.secretary} onChange={(e) => setTournament({ secretary: e.target.value })} placeholder="Фамилия И.О." />
+            <L label="Подзаголовок (возраст, № ЕКП)">
+              <input className="field" value={tournament.ekp ?? ""} onChange={(e) => setTournament({ ekp: e.target.value })} placeholder="юноши, девушки 14-15 лет, ЕКП № …" />
+            </L>
+            <div className="grid grid-cols-[1fr_80px] gap-2">
+              <L label="Главный судья">
+                <input className="field" value={tournament.chiefJudge} onChange={(e) => setTournament({ chiefJudge: e.target.value })} placeholder="Фамилия Имя Отчество" />
+              </L>
+              <L label="Катег.">
+                <input className="field" value={tournament.chiefJudgeCat ?? ""} onChange={(e) => setTournament({ chiefJudgeCat: e.target.value })} placeholder="СВК" />
+              </L>
+            </div>
+            <L label="Зам. главного судьи">
+              <input className="field" value={tournament.deputyJudge ?? ""} onChange={(e) => setTournament({ deputyJudge: e.target.value })} placeholder="Фамилия Имя Отчество" />
+            </L>
+            <div className="grid grid-cols-[1fr_80px] gap-2">
+              <L label="Главный секретарь">
+                <input className="field" value={tournament.secretary} onChange={(e) => setTournament({ secretary: e.target.value })} placeholder="Фамилия Имя Отчество" />
+              </L>
+              <L label="Катег.">
+                <input className="field" value={tournament.secretaryCat ?? ""} onChange={(e) => setTournament({ secretaryCat: e.target.value })} placeholder="СВК" />
+              </L>
+            </div>
+            <L label="Зам. главного секретаря">
+              <input className="field" value={tournament.deputySecretary ?? ""} onChange={(e) => setTournament({ deputySecretary: e.target.value })} placeholder="Фамилия Имя Отчество" />
+            </L>
+            <L label="Требования для разрядов (печатается в протоколе)">
+              <textarea className="field min-h-[72px] py-2" value={tournament.requirements ?? ""} onChange={(e) => setTournament({ requirements: e.target.value })} placeholder="КМС — 1 место при не менее 8 участниках в категории…" />
             </L>
           </div>
         </div>
@@ -71,6 +96,27 @@ export default function ClassesSection() {
       </div>
 
       <div className="flex flex-col gap-3">
+        <div className="win">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+            <span className="mr-1 text-sm font-medium">Добавить готовый набор:</span>
+            {AGE_PRESETS.map((p) => {
+              const has = p.groups.every((pg) => groups.some((g) => g.name === pg.name));
+              return (
+                <button
+                  key={p.title}
+                  className={cn("pill", has && "pill-on")}
+                  disabled={has}
+                  onClick={() => setGroups([...groups, ...p.groups.map((g) => ({ ...g, limits: [...g.limits], id: uid() }))])}
+                >
+                  {has ? <Icon name="Check" size={14} /> : <Icon name="Plus" size={14} />} {p.title}
+                </button>
+              );
+            })}
+          </div>
+          <p className="px-4 pb-3 text-xs text-panel-muted">
+            Весовые категории в наборах — типовые по правилам ФАР, проверьте их по положению вашего турнира. Возраст считается по году рождения.
+          </p>
+        </div>
         {groups.map((g) => (
           <GroupCard key={g.id} g={g} counts={counts} onChange={(p) => update(g.id, p)} onRemove={() => setGroups(groups.filter((x) => x.id !== g.id))} />
         ))}

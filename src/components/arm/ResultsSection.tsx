@@ -1,14 +1,14 @@
 import { Fragment, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, fmtKg, places, pointsFor, tMode, tPoints } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tPoints } from "@/lib/arm";
 import ReweighInput from "./ReweighInput";
 import BiathlonProtocol from "./BiathlonProtocol";
 import TeamProtocol from "./TeamProtocol";
 import { cn } from "@/lib/utils";
 
 export default function ResultsSection() {
-  const { brackets, matches, amap, tournament } = useStore();
+  const { brackets, matches, amap, tournament, athletes } = useStore();
   const classMap = useClassMap();
   const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team">("places");
   const pts = tPoints(tournament);
@@ -24,6 +24,10 @@ export default function ResultsSection() {
     [brackets, onlyDone],
   );
 
+  const dateEndStr = tournament.dateEnd
+    ? new Date(tournament.dateEnd).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const teamsCount = new Set(athletes.map((a) => a.club.trim().toLowerCase()).filter(Boolean)).size;
   const dateStr = tournament.date
     ? new Date(tournament.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
     : "";
@@ -56,9 +60,21 @@ export default function ResultsSection() {
 
       <div className="hidden text-center print:block">
         <div className="text-xl font-bold">{tournament.name}</div>
+        {tournament.ekp && <div className="text-sm">{tournament.ekp}</div>}
         <div className="text-sm">
-          {dateStr} · {tournament.place}
+          {tournament.place}, {dateStr}
+          {dateEndStr ? ` — ${dateEndStr}` : ""}
         </div>
+        <div className="mt-2 grid grid-cols-2 gap-x-6 text-left text-[11px]">
+          <div>Главный судья{tournament.chiefJudgeCat ? `, ${tournament.chiefJudgeCat}` : ""} ________ {tournament.chiefJudge}</div>
+          <div>Главный секретарь{tournament.secretaryCat ? `, ${tournament.secretaryCat}` : ""} ________ {tournament.secretary}</div>
+          {tournament.deputyJudge && <div>Зам. глав. судьи ________ {tournament.deputyJudge}</div>}
+          {tournament.deputySecretary && <div>Зам. глав. секретаря ________ {tournament.deputySecretary}</div>}
+        </div>
+        <div className="mt-2 text-left text-[11px]">
+          Количество участников: {athletes.length}; из них мужчин/юношей {athletes.filter((a) => a.gender === "M").length}, женщин/девушек {athletes.filter((a) => a.gender === "F").length}. Количество команд: {teamsCount}.
+        </div>
+        {tournament.requirements && <div className="mt-1 text-left text-[10px] leading-snug">{tournament.requirements}</div>}
         <div className="mt-2 text-base font-semibold">
           {mode === "places"
             ? "Протокол итоговых мест"
@@ -109,7 +125,8 @@ export default function ResultsSection() {
                     <tr className="border-b border-line text-left font-mono text-xs text-panel-muted print:border-black print:text-black">
                       <th className="w-14 px-4 py-2 font-normal">место</th>
                       <th className="px-2 py-2 font-normal">участник</th>
-                      <th className="px-2 py-2 font-normal">клуб · город</th>
+                      <th className="px-2 py-2 font-normal">д.р. · звание</th>
+                      <th className="px-2 py-2 font-normal">команда · округ</th>
                       <th className="px-2 py-2 font-normal">вес</th>
                       <th className="px-2 py-2 text-right font-normal">п–п</th>
                       <th className="px-4 py-2 text-right font-normal">очки</th>
@@ -134,12 +151,17 @@ export default function ResultsSection() {
                             </span>
                           </td>
                           <td className="px-2 py-2 font-medium">{a?.name}</td>
-                          <td className="px-2 py-2 text-panel-muted print:text-black">
-                            {a?.club} · {a?.city}
+                          <td className="px-2 py-2 text-xs text-panel-muted print:text-black">
+                            {a ? fmtBirth(a) : ""}
+                            {a?.rank ? ` · ${a.rank}` : ""}
                           </td>
-                          <td className="px-2 py-2 font-mono text-panel-muted print:text-black">
-                            {fmtKg(a?.weight)}
-                            {a?.reweigh != null && <span className="ml-1 text-xs">({fmtKg(a.reweigh)})</span>}
+                          <td className="px-2 py-2 text-panel-muted print:text-black">
+                            {a?.club || a?.city || "—"}
+                            {a?.district ? ` · ${a.district}` : ""}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 font-mono text-panel-muted print:text-black">
+                            {fmtKg2(a?.weight)}
+                            {a?.reweigh != null && <span className="ml-1 text-xs">({fmtKg2(a.reweigh)})</span>}
                             {r.needReweigh && <ReweighInput id={r.id} />}
                           </td>
                           <td className="px-2 py-2 text-right font-mono">
@@ -150,7 +172,7 @@ export default function ResultsSection() {
                         {r.note && (
                           <tr className="border-b border-line/60 print:border-black/40">
                             <td />
-                            <td colSpan={5} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
+                            <td colSpan={6} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
                               {r.note}
                             </td>
                           </tr>
@@ -190,10 +212,6 @@ export default function ResultsSection() {
       </div>
       )}
 
-      <div className="hidden grid-cols-2 gap-10 pt-10 text-sm print:grid">
-        <div>Главный судья ____________ {tournament.chiefJudge}</div>
-        <div>Главный секретарь ____________ {tournament.secretary}</div>
-      </div>
 
       <p className="text-xs text-foreground/70 print:hidden">
         Места — как в ArmScorer: кто выбыл позже — выше; выбывшие в одном туре — по меньшему весу; при равном весе — перевзвешивание (п. 2.4 Правил), затем выше тот, кто дольше шёл без поражений. Очки за места: {pts.join(", ")} (меняются в «Категориях»).

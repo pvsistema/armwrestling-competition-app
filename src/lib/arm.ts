@@ -11,7 +11,25 @@ export interface Athlete {
   city: string;
   hands: Hand[];
   reweigh?: number | null;
+  birthDate?: string;
+  rank?: string;
+  district?: string;
 }
+
+export const RANKS = ["б/р", "3 юн. р.", "2 юн. р.", "1 юн. р.", "3 р.", "2 р.", "1 р.", "КМС", "МС", "МСМК", "ЗМС"];
+export const DISTRICTS = ["ЦФО", "СЗФО", "ЮФО", "СКФО", "ПФО", "УФО", "СФО", "ДФО", "Город Москва", "Город Санкт-Петербург"];
+export const DISTRICT_FULL: Record<string, string> = {
+  ЦФО: "Центральный федеральный округ",
+  СЗФО: "Северо-Западный федеральный округ",
+  ЮФО: "Южный федеральный округ",
+  СКФО: "Северо-Кавказский федеральный округ",
+  ПФО: "Приволжский федеральный округ",
+  УФО: "Уральский федеральный округ",
+  СФО: "Сибирский федеральный округ",
+  ДФО: "Дальневосточный федеральный округ",
+  "Город Москва": "Город федерального значения Москва",
+  "Город Санкт-Петербург": "Город федерального значения Санкт-Петербург",
+};
 
 export interface AgeGroup {
   id: string;
@@ -62,6 +80,14 @@ export interface Tournament {
   secretary: string;
   mode?: ScoringMode;
   points?: number[];
+  dateEnd?: string;
+  ekp?: string;
+  chiefJudgeCat?: string;
+  secretaryCat?: string;
+  deputyJudge?: string;
+  deputySecretary?: string;
+  requirements?: string;
+  teamBestOnly?: boolean;
 }
 
 export type ScoringMode = "hands" | "biathlon";
@@ -392,24 +418,34 @@ export function biathlon(
   }
   const rows = Object.values(map);
   const best = (r: BiathlonRow) => Math.min(r.right ?? Infinity, r.left ?? Infinity);
-  const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total;
-  const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], -best(x), -best(y));
+  const second = (r: BiathlonRow) => Math.max(r.right ?? Infinity, r.left ?? Infinity);
+  const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total || best(x) - best(y) || second(x) - second(y);
+  const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], 0, 0);
   rows.sort((x, y) => cmpBase(x, y) || tie(x, y).cmp);
   for (let i = 0; i < rows.length; i++) {
     rows[i].place = i + 1;
-    if (i === 0 || cmpBase(rows[i - 1], rows[i]) !== 0) continue;
+    if (i === 0) continue;
     const x = rows[i - 1];
     const y = rows[i];
-    const t = tie(x, y);
+    if (x.total !== y.total) continue;
     const nx = athletes[x.id]?.name ?? "";
     const ny = athletes[y.id]?.name ?? "";
+    if (x.total === 0 && cmpBase(x, y) !== 0) continue;
+    if (best(x) !== best(y)) {
+      y.note = `Сумма очков равная: ${nx} выше по лучшему месту на одной из рук.`;
+      continue;
+    }
+    if (second(x) !== second(y)) {
+      y.note = `Сумма и лучшее место равны: ${nx} выше по месту на другой руке.`;
+      continue;
+    }
+    const t = tie(x, y);
     if (t.how === "weight") continue;
     if (t.needReweigh) {
       x.needReweigh = y.needReweigh = true;
       y.note = `Сумма и вес равны: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
     }
     if (t.how === "reweigh") y.note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
-    else if (t.how === "unbeaten" && !t.needReweigh) y.note = `Равенство: ${nx} выше по лучшему месту на одной из рук.`;
     else if (t.how === "none") {
       y.place = x.place;
       if (!t.needReweigh)
@@ -422,50 +458,135 @@ export function biathlon(
   return rows;
 }
 
-export interface TeamHand {
-  points: number;
-  medals: [number, number, number];
-}
+export type TeamBy = "team" | "district";
+
 export interface TeamRow {
   team: string;
   place: number;
-  right: TeamHand;
-  left: TeamHand;
+  placeLabel: string;
+  right: number;
+  left: number;
+  biathlon: number;
   total: number;
   medals: [number, number, number];
   members: number;
 }
 
-/** Командный зачёт: очки за места участников команды на каждой руке. */
+/** Командный зачёт. Как в протоколах ФАР: от команды в каждой весовой категории засчитывается лучший результат. */
 export function teamStandings(
   brackets: Bracket[],
   matches: Match[],
   athletes: Record<string, Athlete>,
   pts: number[],
+  opts: { by: TeamBy; mode: ScoringMode; bestOnly: boolean },
 ): TeamRow[] {
-  const map: Record<string, TeamRow & { ids: Set<string> }> = {};
-  const empty = (): TeamHand => ({ points: 0, medals: [0, 0, 0] });
-  for (const b of brackets) {
-    for (const r of places(b, matches, athletes)) {
-      const team = (athletes[r.id]?.club || "").trim();
-      if (!team) continue;
-      const k = team.toLowerCase();
-      const row = (map[k] ||= { team, place: 0, right: empty(), left: empty(), total: 0, medals: [0, 0, 0], members: 0, ids: new Set() });
-      row.ids.add(r.id);
-      const h = row[b.hand];
-      const p = pointsFor(r.place, pts);
-      h.points += p;
+  const teamOf = (id: string) => {
+    const a = athletes[id];
+    return ((opts.by === "district" ? a?.district : a?.club) || "").trim();
+  };
+  type Acc = TeamRow & { ids: Set<string>; best: Record<string, number> };
+  const map: Record<string, Acc> = {};
+  const get = (team: string): Acc =>
+    (map[team.toLowerCase()] ||= {
+      team,
+      place: 0,
+      placeLabel: "",
+      right: 0,
+      left: 0,
+      biathlon: 0,
+      total: 0,
+      medals: [0, 0, 0],
+      members: 0,
+      ids: new Set(),
+      best: {},
+    });
+  const add = (id: string, place: number, slot: string, field: "right" | "left" | "biathlon") => {
+    const team = teamOf(id);
+    if (!team) return;
+    const row = get(team);
+    row.ids.add(id);
+    const p = pointsFor(place, pts);
+    if (opts.bestOnly) {
+      const prev = row.best[slot];
+      if (prev != null && prev >= p) return;
+      row[field] += p - (prev ?? 0);
+      row.total += p - (prev ?? 0);
+      row.best[slot] = p;
+    } else {
+      row[field] += p;
       row.total += p;
-      if (r.place <= 3) {
-        h.medals[r.place - 1]++;
-        row.medals[r.place - 1]++;
-      }
     }
+    if (place <= 3) row.medals[place - 1]++;
+  };
+  if (opts.mode === "biathlon") {
+    const classKeys = Array.from(new Set(brackets.map((b) => b.classKey)));
+    for (const ck of classKeys)
+      for (const r of biathlon(ck, brackets, matches, athletes, pts)) add(r.id, r.place, ck, "biathlon");
+  } else {
+    for (const b of brackets) for (const r of places(b, matches, athletes)) add(r.id, r.place, b.key, b.hand);
   }
-  const rows = Object.values(map).map(({ ids, ...r }) => ({ ...r, members: ids.size }));
-  const cmp = (x: TeamRow, y: TeamRow) =>
-    y.total - x.total || y.medals[0] - x.medals[0] || y.medals[1] - x.medals[1] || y.medals[2] - x.medals[2];
-  rows.sort(cmp);
-  rows.forEach((r, i) => (r.place = i > 0 && cmp(rows[i - 1], r) === 0 ? rows[i - 1].place : i + 1));
+  const rows: TeamRow[] = Object.values(map).map(({ ids, best: _b, ...r }) => ({ ...r, members: ids.size }));
+  rows.sort((x, y) => y.total - x.total || x.team.localeCompare(y.team, "ru"));
+  let i = 0;
+  while (i < rows.length) {
+    let j = i;
+    while (j + 1 < rows.length && rows[j + 1].total === rows[i].total) j++;
+    for (let k = i; k <= j; k++) {
+      rows[k].place = i + 1;
+      rows[k].placeLabel = i === j ? String(i + 1) : `${i + 1}-${j + 1}`;
+    }
+    i = j + 1;
+  }
   return rows;
+}
+
+export const AGE_PRESETS: { title: string; groups: Omit<AgeGroup, "id">[] }[] = [
+  {
+    title: "Юноши и девушки 14–15 лет",
+    groups: [
+      { name: "Юноши 14–15", gender: "M", ageMin: 14, ageMax: 15, limits: [45, 50, 55, 60, 65, 70] },
+      { name: "Девушки 14–15", gender: "F", ageMin: 14, ageMax: 15, limits: [40, 45, 50, 55, 60, 70] },
+    ],
+  },
+  {
+    title: "Юниоры и юниорки 16–18 лет",
+    groups: [
+      { name: "Юниоры 16–18", gender: "M", ageMin: 16, ageMax: 18, limits: [50, 55, 60, 65, 70, 75, 80, 90] },
+      { name: "Юниорки 16–18", gender: "F", ageMin: 16, ageMax: 18, limits: [45, 50, 55, 60, 65, 70] },
+    ],
+  },
+  {
+    title: "Юниоры и юниорки 19–21 год",
+    groups: [
+      { name: "Юниоры 19–21", gender: "M", ageMin: 19, ageMax: 21, limits: [55, 60, 65, 70, 75, 80, 85, 90, 100] },
+      { name: "Юниорки 19–21", gender: "F", ageMin: 19, ageMax: 21, limits: [50, 55, 60, 65, 70, 80] },
+    ],
+  },
+  {
+    title: "Мужчины и женщины",
+    groups: [
+      { name: "Мужчины", gender: "M", ageMin: 18, ageMax: 99, limits: [55, 60, 65, 70, 75, 80, 85, 90, 100, 110] },
+      { name: "Женщины", gender: "F", ageMin: 18, ageMax: 99, limits: [50, 55, 60, 65, 70, 80, 90] },
+    ],
+  },
+  {
+    title: "Ветераны 40+ лет",
+    groups: [
+      { name: "Ветераны", gender: "M", ageMin: 40, ageMax: 99, limits: [70, 80, 90, 100] },
+      { name: "Ветераны (жен.)", gender: "F", ageMin: 40, ageMax: 99, limits: [60, 70] },
+    ],
+  },
+];
+
+export function fmtKg2(w: number | null | undefined) {
+  if (w == null) return "—";
+  return w.toFixed(2);
+}
+
+export function fmtBirth(a: Athlete) {
+  if (a.birthDate) {
+    const [y, m, d] = a.birthDate.split("-");
+    if (y && m && d) return `${d}.${m}.${y}`;
+  }
+  return String(a.birthYear);
 }

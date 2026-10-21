@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { Athlete, Gender, HAND_LABEL, Hand, classOf, fmtKg, tournamentYear } from "@/lib/arm";
+import { Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, RANKS, classOf, fmtBirth, fmtKg, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -12,6 +12,8 @@ const EMPTY = {
   weight: "",
   club: "",
   city: "",
+  rank: "",
+  district: "",
   hands: ["right", "left"] as Hand[],
 };
 
@@ -38,7 +40,9 @@ export default function AthletesSection() {
     e.preventDefault();
     const er: Record<string, string> = {};
     if (f.name.trim().split(/\s+/).length < 2) er.name = "Фамилия и имя";
-    const by = parseInt(f.birthYear, 10);
+    const dm = f.birthYear.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    const by = dm ? parseInt(dm[3], 10) : parseInt(f.birthYear, 10);
+    const birthDate = dm ? `${dm[3]}-${dm[2].padStart(2, "0")}-${dm[1].padStart(2, "0")}` : undefined;
     if (!by || by < 1930 || by > year - 10) er.birthYear = "Год рождения";
     const w = f.weight ? parseFloat(f.weight.replace(",", ".")) : null;
     if (f.weight && (!w || w < 25 || w > 250)) er.weight = "Вес 25–250 кг";
@@ -53,9 +57,12 @@ export default function AthletesSection() {
       club: f.club.trim(),
       city: f.city.trim(),
       hands: f.hands,
+      birthDate,
+      rank: f.rank || undefined,
+      district: f.district || undefined,
     });
     toast({ title: "Участник добавлен", description: f.name.trim() });
-    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city });
+    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district });
   };
 
   const toggleHand = (h: Hand) =>
@@ -94,16 +101,38 @@ export default function AthletesSection() {
                   ))}
                 </div>
               </Field>
-              <Field label="Год рождения" error={err.birthYear}>
-                <input className="field" inputMode="numeric" value={f.birthYear} onChange={(e) => setF({ ...f, birthYear: e.target.value })} placeholder="1998" />
+              <Field label="Дата или год рождения" error={err.birthYear}>
+                <input className="field" inputMode="numeric" value={f.birthYear} onChange={(e) => setF({ ...f, birthYear: e.target.value })} placeholder="10.01.2011" />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Клуб">
-                <input className="field" value={f.club} onChange={(e) => setF({ ...f, club: e.target.value })} placeholder="Титан" />
+              <Field label="Команда / субъект РФ">
+                <input className="field" value={f.club} onChange={(e) => setF({ ...f, club: e.target.value })} placeholder="Республика Татарстан" />
               </Field>
               <Field label="Город">
                 <input className="field" value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} placeholder="Казань" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Спортивное звание">
+                <select className="field" value={f.rank} onChange={(e) => setF({ ...f, rank: e.target.value })}>
+                  <option value="">—</option>
+                  {RANKS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Федеральный округ">
+                <select className="field" value={f.district} onChange={(e) => setF({ ...f, district: e.target.value })}>
+                  <option value="">—</option>
+                  {DISTRICTS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
             <Field label="Вес на взвешивании, кг (можно позже)" error={err.weight}>
@@ -143,7 +172,7 @@ export default function AthletesSection() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
             <Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-panel-muted" />
-            <input className="field !rounded-full pl-10" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по фамилии, клубу, городу" />
+            <input className="field !rounded-full pl-10" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по фамилии, команде, городу" />
           </div>
           {(
             [
@@ -164,8 +193,8 @@ export default function AthletesSection() {
               <thead>
                 <tr className="border-b border-line text-left font-mono text-xs text-panel-muted">
                   <th className="px-4 py-3 font-normal">участник</th>
-                  <th className="px-2 py-3 font-normal">г.р.</th>
-                  <th className="px-2 py-3 font-normal">клуб · город</th>
+                  <th className="px-2 py-3 font-normal">д.р. · звание</th>
+                  <th className="px-2 py-3 font-normal">команда · город · округ</th>
                   <th className="px-2 py-3 font-normal">вес, кг</th>
                   <th className="px-2 py-3 font-normal">категория</th>
                   <th className="px-2 py-3 font-normal">руки</th>
@@ -233,9 +262,13 @@ function Row({
         {a.name}
         <span className="ml-2 font-mono text-xs text-panel-muted">{a.gender === "M" ? "М" : "Ж"}</span>
       </td>
-      <td className="px-2 py-2.5 font-mono text-panel-muted">{a.birthYear}</td>
+      <td className="px-2 py-2.5 font-mono text-panel-muted">
+        {fmtBirth(a)}
+        {a.rank && <div className="font-sans text-xs">{a.rank}</div>}
+      </td>
       <td className="px-2 py-2.5 text-panel-muted">
         {a.club || "—"} · {a.city || "—"}
+        {a.district && <div className="text-xs">{a.district}</div>}
       </td>
       <td className="px-2 py-2.5">
         <input
