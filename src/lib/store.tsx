@@ -146,6 +146,12 @@ function initial(): State {
         };
       const sig = (g: AgeGroup[]) => JSON.stringify(g.map((x) => [x.id, x.name, x.gender, x.ageMin, x.ageMax, x.limits]));
       if (!st.athletes.length && !st.brackets.length && sig(st.groups) === sig(LEGACY_DEFAULT_GROUPS)) st = { ...st, groups: [] };
+      const legacyIds = new Set(LEGACY_DEFAULT_GROUPS.map((g) => g.id));
+      if (!localStorage.getItem(`${KEY}:groupsV2`)) {
+        localStorage.setItem(`${KEY}:groupsV2`, "1");
+        if (!st.athletes.length && !st.brackets.length) st = { ...st, groups: [] };
+        else if (!st.brackets.length) st = { ...st, groups: st.groups.filter((g) => !legacyIds.has(g.id)) };
+      }
       const onlyDemo = st.athletes.length > 0 && st.athletes.every((a) => LEGACY_DEMO_NAMES.has(a.name));
       if (onlyDemo) return { ...st, athletes: [], brackets: [], matches: [], order: 1 };
       return st;
@@ -389,7 +395,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () =>
       setS((p) => ({
         tournament: { ...DEFAULT_TOURNAMENT, tables: p.tournament.tables },
-        groups: p.groups,
+        groups: [],
         athletes: [],
         brackets: [],
         matches: [],

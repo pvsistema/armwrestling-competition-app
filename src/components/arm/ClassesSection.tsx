@@ -134,6 +134,16 @@ export default function ClassesSection({ onNext }: { onNext?: () => void }) {
               </button>
             </div>
           )}
+          {groups.length > 0 && (
+            <div className="flex justify-end px-4 pt-3">
+              <button
+                className="inline-flex items-center gap-1.5 text-xs text-panel-muted hover:text-corner-red"
+                onClick={() => confirm("Удалить все возрастные группы и весовые категории?") && setGroups([])}
+              >
+                <Icon name="Eraser" size={14} /> Очистить все категории
+              </button>
+            </div>
+          )}
           <p className="px-4 pb-3 pt-3 text-xs text-panel-muted">
             Весовые категории в наборах — типовые по правилам ФАР, проверьте их по положению вашего турнира. Возраст считается по году рождения.
           </p>
