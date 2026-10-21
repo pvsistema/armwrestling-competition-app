@@ -76,6 +76,11 @@ export default function AutoBackupBadge() {
             <Icon name="Save" size={15} /> Сохранить копию сейчас
           </button>
         )}
+        {status.folder !== "none" && (
+          <button className="pill" onClick={() => window.dispatchEvent(new Event("armsport-open-restore"))}>
+            <Icon name="History" size={15} /> Восстановить из копии…
+          </button>
+        )}
         <button className={cn("pill justify-start", status.on && "pill-on")} onClick={() => toggle(!status.on)}>
           <Icon name={status.on ? "SquareCheck" : "Square"} size={15} /> Автокопия каждые {BACKUP_EVERY_MIN} минут
         </button>

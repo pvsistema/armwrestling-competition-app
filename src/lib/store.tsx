@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef,
+  useState, ReactNode } from "react";
 import {
   AgeGroup,
   Athlete,
@@ -193,9 +194,12 @@ const StoreCtx = createContext<Ctx | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<State>(initial);
 
+  const firstSave = useRef(true);
   useEffect(() => {
     try {
       localStorage.setItem(KEY, JSON.stringify(s));
+      if (firstSave.current) firstSave.current = false;
+      else localStorage.setItem(`${KEY}:changedAt`, String(Date.now()));
     } catch {
       /* ignore */
     }

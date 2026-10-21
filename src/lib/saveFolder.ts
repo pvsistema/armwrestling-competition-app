@@ -169,3 +169,35 @@ export async function saveQuiet(blob: Blob, name: string, sub: string, keep?: { 
   }
   return [h.name, sub, name].join(" / ");
 }
+
+export interface BackupFile {
+  name: string;
+  at: number;
+  read: () => Promise<File>;
+}
+
+/** Список автокопий и ручных копий в «Копии турнира», новые сверху. */
+export async function listBackups(): Promise<BackupFile[]> {
+  const h = await getFolder();
+  if (!h || (await folderReady()) !== "ok") return [];
+  let dir: FileSystemDirectoryHandle;
+  try {
+    dir = await h.getDirectoryHandle(FOLDERS.backup);
+  } catch {
+    return [];
+  }
+  const out: BackupFile[] = [];
+  for await (const [n, fh] of (dir as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }).entries()) {
+    if (fh.kind !== "file" || !n.endsWith(".armsport.json")) continue;
+    const f = await (fh as FileSystemFileHandle).getFile();
+    out.push({ name: n, at: f.lastModified, read: () => (fh as FileSystemFileHandle).getFile() });
+  }
+  return out.sort((a, b) => b.at - a.at);
+}
+
+/** Запросить доступ к папке (только по нажатию кнопки). */
+export async function askFolder() {
+  const h = await getFolder();
+  if (!h) return false;
+  return allowed(h);
+}

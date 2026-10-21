@@ -9,6 +9,7 @@ import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
+import RestoreBackup from "@/components/arm/RestoreBackup";
 import HandDoneDialog from "@/components/arm/HandDoneDialog";
 import ImportAthletes from "@/components/arm/ImportAthletes";
 import StallAlert from "@/components/arm/StallAlert";
@@ -55,6 +56,7 @@ function Shell() {
         <div className="tricolor -mx-4 mb-1 sm:-mx-10 print:hidden" />
         <AppHeader section={section} onSection={setSection} right={right} />
         <main className="flex flex-1 flex-col gap-4">
+          <RestoreBackup />
           <HandDoneDialog />
           <StallAlert
             onGoJudge={(t) => {
