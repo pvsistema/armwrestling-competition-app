@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tPoints } from "@/lib/arm";
+import { Hand, handsInOrder, GROUP_LABEL, HAND_LABEL, HOW_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tPoints } from "@/lib/arm";
 import ReweighInput from "./ReweighInput";
 import DeciderButton from "./DeciderButton";
 import BiathlonProtocol from "./BiathlonProtocol";
@@ -17,6 +17,8 @@ export default function ResultsSection() {
   const pts = tPoints(tournament);
   const scoring = tMode(tournament);
   const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team" | "judges">(scoring === "biathlon" ? "biathlon" : "places");
+  const [hand, setHand] = useState<Hand | "both">(scoring === "biathlon" ? (tournament.firstHand ?? "left") : "both");
+  const order = handsInOrder(tournament);
   const [onlyDone, setOnlyDone] = useState(false);
   const [withJudges, setWithJudges] = useState(true);
 
@@ -24,9 +26,15 @@ export default function ResultsSection() {
     () =>
       brackets
         .filter((b) => !onlyDone || b.done)
+        .filter((b) => hand === "both" || b.hand === hand)
         .slice()
-        .sort((a, b) => a.classKey.localeCompare(b.classKey) || a.hand.localeCompare(b.hand)),
-    [brackets, onlyDone],
+        .sort(
+          (a, b) =>
+            order.indexOf(a.hand) - order.indexOf(b.hand) ||
+            Object.keys(classMap).indexOf(a.classKey) - Object.keys(classMap).indexOf(b.classKey),
+        ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [brackets, onlyDone, hand, tournament.firstHand, classMap],
   );
 
   const dateEndStr = tournament.dateEnd
@@ -75,10 +83,43 @@ export default function ResultsSection() {
         </button>
       </div>
 
+      {(mode === "places" || mode === "matches" || mode === "biathlon") && (
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <span className="text-sm text-panel-muted">Протокол:</span>
+          {order.map((h) => {
+            const own = brackets.filter((b) => b.hand === h);
+            const done = own.length > 0 && own.every((b) => b.done);
+            return (
+              <button
+                key={h}
+                className={cn("pill", mode !== "biathlon" && hand === h && "pill-on")}
+                onClick={() => {
+                  setHand(h);
+                  if (mode === "biathlon") setMode("places");
+                }}
+                title={done ? "Все категории на этой руке завершены" : "Идёт или ещё не начата"}
+              >
+                <Icon name={done ? "CircleCheck" : "Hand"} size={15} /> {h === "left" ? "Левая рука" : "Правая рука"}
+              </button>
+            );
+          })}
+          {scoring !== "biathlon" && (
+            <button className={cn("pill", hand === "both" && "pill-on")} onClick={() => setHand("both")}>
+              Обе руки
+            </button>
+          )}
+          {scoring === "biathlon" && (
+            <button className={cn("pill", mode === "biathlon" && "pill-on")} onClick={() => setMode("biathlon")} title="Итог по сумме обеих рук">
+              <Icon name="Sigma" size={15} /> Общий (двоеборье)
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="win flex-row flex-wrap items-center gap-3 px-4 py-3 print:hidden">
         <ExportButtons onlyDone={onlyDone} />
         <span className="text-xs text-panel-muted">
-          Весь протокол целиком, как в образце ФАР: шапка, итоги по категориям, командный зачёт, судейская коллегия. Альбомный A4.
+          Отдельно левая рука, правая рука, общий итог двоеборья — или всё одним файлом. Альбомный A4, как в образце ФАР.
         </span>
       </div>
 
@@ -104,9 +145,9 @@ export default function ResultsSection() {
         {tournament.requirements && <div className="mt-1 text-left text-[10px] leading-snug">{tournament.requirements}</div>}
         <div className="mt-2 text-base font-semibold">
           {mode === "places"
-            ? "Протокол итоговых мест"
+            ? `Протокол итоговых мест${hand === "both" ? "" : ` — борьба ${hand === "left" ? "левой" : "правой"} рукой`}`
             : mode === "matches"
-              ? "Протокол хода соревнований"
+              ? `Протокол хода соревнований${hand === "both" ? "" : ` — борьба ${hand === "left" ? "левой" : "правой"} рукой`}`
               : mode === "biathlon"
                 ? "Протокол двоеборья"
                 : mode === "judges"

@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Hand, handsInOrder } from "@/lib/arm";
 
 /** Выгрузка стартовых листов и хода схваток для судей на столы. */
 export default function JudgeSheetsButton({ currentKey }: { currentKey: string | null }) {
@@ -10,17 +11,19 @@ export default function JudgeSheetsButton({ currentKey }: { currentKey: string |
   const classMap = useClassMap();
   const [scope, setScope] = useState<"all" | "current" | number>("all");
   const [busy, setBusy] = useState(false);
+  const [hand, setHand] = useState<Hand | "both">("both");
   const tables = Math.max(1, tournament.tables);
 
   if (!brackets.length) return null;
 
   const run = async () => {
-    const list =
+    const list = (
       scope === "all"
         ? brackets
         : scope === "current"
           ? brackets.filter((b) => b.key === currentKey)
-          : brackets.filter((b) => b.table === scope);
+          : brackets.filter((b) => b.table === scope)
+    ).filter((b) => scope === "current" || hand === "both" || b.hand === hand);
     if (!list.length) {
       toast({ title: "Нечего выгружать", description: "Для выбранного варианта нет проведённых жеребьёвок." });
       return;
@@ -28,7 +31,9 @@ export default function JudgeSheetsButton({ currentKey }: { currentKey: string |
     setBusy(true);
     try {
       const m = await import("@/lib/judgeSheets");
-      const suffix = scope === "all" ? "все" : scope === "current" ? "категория" : `стол-${scope}`;
+      const suffix =
+        (scope === "all" ? "все" : scope === "current" ? "категория" : `стол-${scope}`) +
+        (scope !== "current" && hand !== "both" ? (hand === "left" ? " — левая" : " — правая") : "");
       await m.exportJudgeSheets({ tournament, brackets, matches, amap, classMap }, list, `Листы судей — ${suffix}`);
       toast({ title: "Листы для судей сохранены", description: `${list.length} ${list.length === 1 ? "категория" : "категорий"}, каждая на отдельной странице` });
     } catch (e) {
@@ -56,6 +61,15 @@ export default function JudgeSheetsButton({ currentKey }: { currentKey: string |
           </button>
         ))}
       </div>
+      {scope !== "current" && (
+        <div className="flex flex-wrap gap-1.5">
+          {[...handsInOrder(tournament), "both" as const].map((h) => (
+            <button key={h} className={cn("pill !px-3 !py-1 text-xs", hand === h && "pill-on")} onClick={() => setHand(h)}>
+              {h === "both" ? "Обе руки" : h === "left" ? "Левая рука" : "Правая рука"}
+            </button>
+          ))}
+        </div>
+      )}
       <button className="btn-blue w-full" onClick={run} disabled={busy}>
         <Icon name={busy ? "Loader2" : "FileDown"} size={16} className={busy ? "animate-spin" : ""} /> Скачать PDF
       </button>

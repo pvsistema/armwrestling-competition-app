@@ -3,6 +3,8 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, OUT_LABEL, OutReason, WinHow, fmtKg, standings, surname } from "@/lib/arm";
 import CallBar from "./CallBar";
+import HandStageBar from "./HandStageBar";
+import { handStage, waitingSecond } from "@/lib/queue";
 import { pendingQueue } from "@/lib/queue";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,10 +18,10 @@ interface Props {
 }
 
 export default function JudgePanel({ table, onGoBracket }: Props) {
-  const { matches, brackets, amap, setWinner, addPen, withdraw, undo, canUndo, tournament } = useStore();
+  const { matches, brackets, amap, setWinner, addPen, withdraw, undo, canUndo, tournament, setTournament } = useStore();
   const presets = restPresets(tournament);
   const classMap = useClassMap();
-  const queue = useMemo(() => pendingQueue(matches, table), [matches, table]);
+  const queue = useMemo(() => pendingQueue(matches, table, tournament), [matches, table, tournament]);
   const current = queue[0];
   const [flash, setFlash] = useState<string | null>(null);
   const timers = useTimers();
@@ -76,6 +78,28 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
   }, [current]);
 
   if (!current) {
+    const hs = handStage(matches, tournament);
+    const wait = waitingSecond(matches, table, tournament);
+    if (wait > 0)
+      return (
+        <section className="flex flex-1 flex-col items-center justify-center rounded-lg bg-frame p-2.5">
+          <div className="win w-full flex-1 items-center justify-center gap-4 p-10 text-center">
+            <Icon name="Hourglass" size={44} className="text-primary" />
+            <h1 className="text-[28px] font-medium leading-tight md:text-[40px]">
+              {table === "all" ? "" : `Стол ${table}: `}
+              {hs.first === "left" ? "левая" : "правая"} рука закончена
+            </h1>
+            <p className="max-w-lg text-panel-muted">
+              Ждём окончания {hs.first === "left" ? "левой" : "правой"} руки на других столах — осталось {hs.firstLeft}{" "}
+              {plural(hs.firstLeft, "схватка", "схватки", "схваток")}. Затем на этом столе начнётся{" "}
+              {hs.second === "left" ? "левая" : "правая"} рука ({wait} {plural(wait, "схватка", "схватки", "схваток")} в первом туре).
+            </p>
+            <button className="pill" onClick={() => setTournament({ secondHandOpen: true })}>
+              <Icon name="FastForward" size={16} /> Начать {hs.second === "left" ? "левую" : "правую"} руку сейчас
+            </button>
+          </div>
+        </section>
+      );
     return (
       <section className="flex flex-1 flex-col items-center justify-center rounded-lg bg-frame p-2.5">
         <div className="win w-full flex-1 items-center justify-center gap-4 p-10 text-center">
@@ -193,6 +217,7 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
 
   return (
     <>
+      <HandStageBar table={table} />
       <CallBar
         match={current}
         onNoShow={(absent) => {

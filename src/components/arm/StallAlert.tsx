@@ -6,7 +6,7 @@ import { surname } from "@/lib/arm";
 /** Сигнал секретарю: пара у стола дольше 3 минут без результата. */
 export default function StallAlert({ onGoJudge }: { onGoJudge: (table: number) => void }) {
   const { matches, amap, tournament } = useStore();
-  const { stalls, snooze } = useStallWatch(matches, tournament.tables);
+  const { stalls, snooze } = useStallWatch(matches, tournament.tables, tournament);
   if (!stalls.length) return null;
   return (
     <div className="flex flex-col gap-2 print:hidden">

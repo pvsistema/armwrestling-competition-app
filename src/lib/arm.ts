@@ -124,7 +124,17 @@ export interface Tournament {
   olympicThird?: boolean;
   tolerance?: number;
   requireAdmit?: boolean;
+  /** С какой руки начинается турнир (п. 1.1 — по Положению). */
+  firstHand?: Hand;
+  /** true — вторая рука начинается только после окончания первой на всех столах. */
+  handStages?: boolean;
+  /** Секретарь вручную разрешил начать вторую руку раньше. */
+  secondHandOpen?: boolean;
 }
+
+export const firstHandOf = (t: Pick<Tournament, "firstHand">): Hand => t.firstHand ?? "left";
+export const secondHandOf = (t: Pick<Tournament, "firstHand">): Hand => (firstHandOf(t) === "left" ? "right" : "left");
+export const handsInOrder = (t: Pick<Tournament, "firstHand">): Hand[] => [firstHandOf(t), secondHandOf(t)];
 
 export interface Judge {
   id: string;

@@ -1,4 +1,4 @@
-import { Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
+import { Hand, handsInOrder, Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
 import { fmtDateRange } from "./protocolModel";
 
 const BASE = import.meta.env.BASE_URL;
@@ -26,14 +26,14 @@ export interface SheetsInput {
   classMap: Record<string, WeightClass>;
 }
 
-/** Сортировка: по столу, затем левая рука раньше правой, затем по категории. */
-export function orderBrackets(list: Bracket[]) {
+/** Сортировка: сначала вся первая рука (по столам), затем вторая. */
+export function orderBrackets(list: Bracket[], hands: Hand[] = HAND_ORDER) {
   return list
     .slice()
     .sort(
       (a, b) =>
+        hands.indexOf(a.hand) - hands.indexOf(b.hand) ||
         a.table - b.table ||
-        HAND_ORDER.indexOf(a.hand) - HAND_ORDER.indexOf(b.hand) ||
         a.classKey.localeCompare(b.classKey, "ru", { numeric: true }),
     );
 }
@@ -74,7 +74,7 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
   };
   const headStyles = { fillColor: [235, 235, 235] as [number, number, number], textColor: 0, fontStyle: "bold" as const, halign: "center" as const };
 
-  orderBrackets(list).forEach((b, bi) => {
+  orderBrackets(list, handsInOrder(inp.tournament)).forEach((b, bi) => {
     if (bi > 0) pdf.addPage();
     const c = inp.classMap[b.classKey];
     const catTitle = `${c?.groupName ?? ""}, ${c?.abs ? "абсолютное первенство" : c?.limit == null ? `${c?.prev ?? ""}+ кг` : `до ${c.limit} кг`}, ${HAND_LABEL[b.hand]} рука`;

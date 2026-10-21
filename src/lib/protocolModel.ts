@@ -3,6 +3,8 @@ import {
   Bracket,
   DISTRICT_FULL,
   HAND_LABEL,
+  Hand,
+  handsInOrder,
   Judge,
   JUDGE_CATEGORIES,
   JUDGE_ROLES,
@@ -32,6 +34,8 @@ export interface Section {
   newPage?: boolean;
   fontSize?: number;
   boldBody?: boolean;
+  /** Раздел протокола: «Левая рука», «Правая рука», «Двоеборье» — с новой страницы и отдельным листом Excel. */
+  group?: string;
 }
 export interface ProtocolDoc {
   title: string;
@@ -71,12 +75,63 @@ function classTitle(c: WeightClass | undefined) {
   return `${c.groupName} — весовая категория ${w}`;
 }
 
-export function buildProtocol(s: State, classMap: Record<string, WeightClass>, opts: { onlyDone?: boolean } = {}): ProtocolDoc {
+/** part: hand — протокол одной руки; biathlon — общий (двоеборье + командный); full — всё. */
+export type ProtocolPart = "left" | "right" | "biathlon" | "full";
+
+function handSections(s: State, used: Bracket[], classMap: Record<string, WeightClass>, amap: Record<string, Athlete>, pts: number[], hand?: Hand): Section[] {
+  const order = (b: Bracket) => Object.keys(classMap).indexOf(b.classKey);
+  const hOrder = handsInOrder(s.tournament);
+  return [...used]
+    .filter((b) => !hand || b.hand === hand)
+    .sort((a, b) => hOrder.indexOf(a.hand) - hOrder.indexOf(b.hand) || order(a) - order(b))
+    .map((b) => {
+      const rows = places(b, s.matches, amap);
+      return {
+        title: `${classTitle(classMap[b.classKey])}, ${HAND_LABEL[b.hand]} рука`,
+        group: b.hand === "left" ? "Борьба левой рукой" : "Борьба правой рукой",
+        boldBody: true,
+        fontSize: 8,
+        columns: [
+          { title: "Место", width: 6, align: "center" },
+          { title: "Фамилия, имя, отчество", width: 22 },
+          { title: "Пол, дата рождения", width: 10, align: "center" },
+          { title: "Спортивное звание", width: 8, align: "center" },
+          { title: "Субъект Российской Федерации", width: 20 },
+          { title: "Федеральный округ Российской Федерации", width: 11, align: "center" },
+          { title: "Побед / поражений", width: 8, align: "center" },
+          { title: "Очки", width: 6, align: "center" },
+          { title: "Вес спортсмена (кг)", width: 9, align: "center" },
+        ],
+        rows: rows.map((r, i) => {
+          const a = amap[r.id];
+          return [
+            placeLabel(rows, i),
+            a?.name ?? "",
+            `${sex(a)}\n${a ? fmtBirth(a) : ""}`,
+            a?.rank ?? "",
+            a?.club ?? "",
+            a?.district ?? "",
+            `${r.wins} / ${r.losses}`,
+            b.done ? String(pointsFor(r.place, pts)) : "",
+            kg(a?.weight),
+          ];
+        }),
+        notes: rows.filter((r) => r.note).map((r) => r.note!),
+      } as Section;
+    });
+}
+
+export function buildProtocol(
+  s: State,
+  classMap: Record<string, WeightClass>,
+  opts: { onlyDone?: boolean; part?: ProtocolPart } = {},
+): ProtocolDoc {
+  const part = opts.part ?? "full";
   const t = s.tournament;
   const amap = Object.fromEntries(s.athletes.map((a) => [a.id, a]));
   const pts = tPoints(t);
   const mode = tMode(t);
-  const used = s.brackets.filter((b) => !opts.onlyDone || b.done);
+  const used = s.brackets.filter((b) => (!opts.onlyDone || b.done) && (part === "full" || part === "biathlon" || b.hand === part));
   const order = (b: Bracket) => Object.keys(classMap).indexOf(b.classKey);
 
   const officials: [string, string][] = [];
@@ -89,18 +144,24 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
   }
 
   const inGrid = new Set(used.flatMap((b) => b.athletes));
-  const part = s.athletes.filter((a) => inGrid.has(a.id) || !used.length);
-  const men = part.filter((a) => a.gender === "M").length;
-  const teams = Array.from(new Set(part.map((a) => a.club.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
+  const people = s.athletes.filter((a) => inGrid.has(a.id) || !used.length);
+  const men = people.filter((a) => a.gender === "M").length;
+  const teams = Array.from(new Set(people.map((a) => a.club.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
   const info = [
-    `Количество участников: ${part.length}; из них мужчин/юношей ${men}, женщин/девушек ${part.length - men}`,
+    `Количество участников: ${people.length}; из них мужчин/юношей ${men}, женщин/девушек ${people.length - men}`,
     `Количество команд: ${teams.length}`,
   ];
   if (teams.length) info.push(teams.join(", "));
 
   const sections: Section[] = [];
 
-  if (mode === "biathlon") {
+  if (part === "left" || part === "right") {
+    sections.push(...handSections(s, used, classMap, amap, pts, part));
+  } else if (part === "full" && mode === "biathlon") {
+    sections.push(...handSections(s, used, classMap, amap, pts));
+  }
+
+  if (part !== "left" && part !== "right" && mode === "biathlon") {
     const keys = Array.from(new Set(used.map((b) => b.classKey))).sort(
       (a, b) => Object.keys(classMap).indexOf(a) - Object.keys(classMap).indexOf(b),
     );
@@ -108,6 +169,7 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
       const rows = biathlon(k, used, s.matches, amap, pts);
       sections.push({
         title: classTitle(classMap[k]),
+        group: "Двоеборье — общий итог",
         boldBody: true,
         fontSize: 8,
         columns: [
@@ -144,7 +206,7 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
         notes: rows.filter((r) => r.note).map((r) => r.note!),
       });
     });
-  } else {
+  } else if (part === "full" || part === "biathlon") {
     [...used]
       .sort((a, b) => order(a) - order(b) || a.hand.localeCompare(b.hand))
       .forEach((b) => {
@@ -184,7 +246,7 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
   }
 
   const bestOnly = t.teamBestOnly ?? true;
-  for (const by of ["team", "district"] as const) {
+  for (const by of part === "left" || part === "right" ? [] : (["team", "district"] as const)) {
     const rows = teamStandings(used, s.matches, amap, pts, { by, mode, bestOnly });
     if (!rows.length) continue;
     sections.push({
@@ -204,7 +266,7 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
   }
 
   const judges = sortJudges(t.judges ?? []);
-  if (judges.length)
+  if (judges.length && part !== "left" && part !== "right")
     sections.push({
       title: "СПИСОК судейской коллегии",
       newPage: true,
@@ -221,15 +283,24 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
 
   const placeDate = [t.place, fmtDateRange(t.date, t.dateEnd)].filter(Boolean).join(", ");
   const title = t.name || "Соревнования по армрестлингу";
+  const partTitle =
+    part === "left"
+      ? "Протокол результатов: борьба левой рукой"
+      : part === "right"
+        ? "Протокол результатов: борьба правой рукой"
+        : part === "biathlon" && mode === "biathlon"
+          ? "Итоговый протокол: двоеборье (сумма левой и правой руки)"
+          : "";
+  const partFile = part === "left" ? " — левая рука" : part === "right" ? " — правая рука" : part === "biathlon" ? " — общий" : "";
   return {
     title,
-    subtitle: t.ekp || "",
+    subtitle: [t.ekp, partTitle].filter(Boolean).join(" · "),
     placeDate,
     officials,
     info,
     requirements: t.requirements,
     sections,
-    fileBase: (`Протокол ${title}`).replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 80),
+    fileBase: (`Протокол ${title}${partFile}`).replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 80),
   };
 }
 

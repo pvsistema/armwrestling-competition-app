@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
-import { pendingQueue } from "@/lib/queue";
+import { handStage, pendingQueue, waitingSecond } from "@/lib/queue";
 import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
@@ -108,6 +108,14 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     );
   };
 
+  const stage = handStage(matches, tournament);
+  const stageText =
+    (tournament.handStages ?? true) && stage.firstTotal > 0
+      ? stage.firstLeft > 0
+        ? `Этап 1 · ${HAND_LABEL[stage.first]} рука`
+        : `Этап 2 · ${HAND_LABEL[stage.second]} рука`
+      : "";
+
   const label = (key: string) => {
     const b = brackets.find((x) => x.key === key);
     if (!b) return "";
@@ -122,7 +130,11 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         {(tournament.showLogo ?? true) && <Logo hq className="h-14 w-14 shadow md:h-20 md:w-20" />}
         <div className="min-w-0">
           <div className="truncate text-xl font-semibold tracking-tight md:text-3xl">{tournament.name || "Соревнования по армрестлингу"}</div>
-          {focusTable !== "all" && tables > 1 && <div className="text-lg text-panel-muted md:text-xl">Стол {focusTable}</div>}
+          {(focusTable !== "all" && tables > 1) || stageText ? (
+            <div className="text-lg text-panel-muted md:text-xl">
+              {[focusTable !== "all" && tables > 1 ? `Стол ${focusTable}` : "", stageText].filter(Boolean).join(" · ")}
+            </div>
+          ) : null}
         </div>
         <div className="ml-auto flex items-center gap-3">
           {tables > 1 && focusTable !== "all" && (
@@ -154,7 +166,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   );
 
   function tableCard(table: number, onOpen: () => void, compact: boolean) {
-    const q = pendingQueue(matches, table);
+    const q = pendingQueue(matches, table, tournament);
     const cur = q[0];
     const next = q.slice(1, compact ? 3 : 4);
     const last = lastOf(table)[0];
@@ -192,7 +204,11 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
             {name(cur.b, "red", compact ? "md" : "lg", cur)}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center p-4 text-lg text-panel-muted">Схваток нет</div>
+          <div className="flex flex-1 items-center justify-center p-4 text-center text-lg text-panel-muted">
+            {waitingSecond(matches, table, tournament) > 0
+              ? `Ждём окончания ${stage.first === "left" ? "левой" : "правой"} руки на других столах`
+              : "Схваток нет"}
+          </div>
         )}
         <div className="border-t border-line bg-surface/60 px-4 py-2.5">
           <div className="mb-1 font-mono text-xs text-panel-muted">СЛЕДУЮЩИЕ ПАРЫ</div>
@@ -235,7 +251,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
 
   function singleTable(table: number, single: boolean) {
     const t: number | "all" = single ? "all" : table;
-    const queue = pendingQueue(matches, t);
+    const queue = pendingQueue(matches, t, tournament);
     const lastOne = lastOf(t)[0];
     const showWin = fresh(lastOne);
     const current = queue[0];
@@ -292,7 +308,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-lg border border-line bg-surface p-10 text-center text-3xl text-panel-muted">
-            Ожидаем следующие схватки
+            {waitingSecond(matches, t, tournament) > 0
+              ? `${stage.first === "left" ? "Левая" : "Правая"} рука на этом столе закончена. Ждём другие столы`
+              : "Ожидаем следующие схватки"}
           </div>
         )}
         <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">

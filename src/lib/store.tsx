@@ -69,17 +69,35 @@ function settle(p: State): State {
   return { ...p, matches, brackets, order };
 }
 
+/** Стол для категории: обе руки одной весовой — на одном столе; новая категория — на наименее загруженный. */
+function tableFor(s: State, key: string): number {
+  const n = Math.max(1, s.tournament.tables);
+  const classKey = key.split("|")[0];
+  const same = s.brackets.find((b) => b.key === key) ?? s.brackets.find((b) => b.classKey === classKey);
+  if (same && same.table <= n) return same.table;
+  const load = Array.from({ length: n }, () => 0);
+  for (const b of s.brackets) if (b.table <= n) load[b.table - 1] += b.athletes.length;
+  let best = 0;
+  for (let i = 1; i < n; i++) if (load[i] < load[best]) best = i;
+  return best + 1;
+}
+
 function drawAllInto(s: State): State {
   const byKey = poolsOf(s);
   const existing = new Set(s.brackets.map((b) => b.key));
   let next = { ...s };
-  const classes = weightClasses(s.groups);
-  const keys = classes.flatMap((c) => HAND_ORDER.map((h) => bracketKey(c.key, h)));
-  let tableIdx = s.brackets.length;
-  for (const k of keys) {
-    if (!byKey[k] || existing.has(k)) continue;
-    next = drawOne(next, k, byKey[k], (tableIdx++ % Math.max(1, s.tournament.tables)) + 1);
-  }
+  const classes = weightClasses(s.groups)
+    .filter((c) => HAND_ORDER.some((h) => byKey[bracketKey(c.key, h)]))
+    .sort((a, b) => {
+      const sz = (k: string) => Math.max(...HAND_ORDER.map((h) => byKey[bracketKey(k, h)]?.length ?? 0));
+      return sz(b.key) - sz(a.key);
+    });
+  for (const c of classes)
+    for (const h of HAND_ORDER) {
+      const k = bracketKey(c.key, h);
+      if (!byKey[k] || existing.has(k)) continue;
+      next = drawOne(next, k, byKey[k], tableFor(next, k));
+    }
   return next;
 }
 
@@ -158,6 +176,7 @@ interface Ctx extends State {
   drawAll: () => void;
   clearDraw: (key?: string) => void;
   setWinner: (matchId: string, winnerId: string, how?: WinHow) => void;
+  setBracketTable: (classKey: string, table: number) => void;
   addPen: (matchId: string, athleteId: string, kind: "r" | "f", delta?: 1 | -1) => void;
   callMatch: (matchId: string, on?: boolean) => void;
   withdraw: (athleteId: string, reason: OutReason | null) => void;
@@ -229,8 +248,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setS((p) => {
       const ids = poolsOf(p)[key] ?? [];
       if (!ids.length) return p;
-      const existing = p.brackets.find((b) => b.key === key);
-      const table = existing?.table ?? (p.brackets.length % Math.max(1, p.tournament.tables)) + 1;
+      const table = tableFor(p, key);
       return settle(drawOne(p, key, ids, table));
     });
   }, []);
@@ -241,7 +259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setS((p) =>
       key
         ? { ...p, brackets: p.brackets.filter((b) => b.key !== key), matches: p.matches.filter((m) => m.key !== key) }
-        : { ...p, brackets: [], matches: [], order: 1 },
+        : { ...p, brackets: [], matches: [], order: 1, tournament: { ...p.tournament, secondHandOpen: false } },
     );
   }, []);
 
@@ -254,6 +272,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       return settle({ ...p, matches });
     });
+  }, []);
+
+  const setBracketTable = useCallback((classKey: string, table: number) => {
+    setS((p) => ({
+      ...p,
+      brackets: p.brackets.map((b) => (b.classKey === classKey ? { ...b, table } : b)),
+      matches: p.matches.map((m) => (m.key.startsWith(`${classKey}|`) && !m.winner ? { ...m, table } : m)),
+    }));
   }, []);
 
   const addPen = useCallback((matchId: string, athleteId: string, kind: "r" | "f", delta: 1 | -1 = 1) => {
@@ -382,6 +408,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     drawAll,
     clearDraw,
     setWinner,
+    setBracketTable,
     addPen,
     callMatch,
     withdraw,

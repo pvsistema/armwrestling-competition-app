@@ -104,8 +104,12 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean) {
   y += 3;
 
   let first = true;
+  const multiGroup = new Set(doc.sections.map((x) => x.group).filter(Boolean)).size > 1;
+  let prevGroup: string | undefined;
   for (const s of doc.sections) {
-    if (s.newPage && !first) {
+    const newGroup = multiGroup && s.group && s.group !== prevGroup;
+    prevGroup = s.group ?? prevGroup;
+    if ((s.newPage || newGroup) && !first) {
       pdf.addPage();
       y = headerH + 4;
     } else if (!first) {
@@ -116,6 +120,12 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean) {
       }
     }
     first = false;
+    if (newGroup) {
+      pdf.setFont("NS", "bold");
+      pdf.setFontSize(12);
+      pdf.text(s.group!.toUpperCase(), W / 2, y + 2, { align: "center" });
+      y += 7;
+    }
     pdf.setFont("NS", "bold");
     pdf.setFontSize(s.newPage ? 12 : 10);
     if (s.newPage) pdf.text(s.title, W / 2, y + 2, { align: "center" });
@@ -268,7 +278,13 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean) {
   const body: (InstanceType<typeof Paragraph> | InstanceType<typeof Table>)[] = [];
   doc.info.forEach((l) => body.push(para(l, { size: 11 })));
   if (doc.requirements) body.push(para(doc.requirements, { italics: true, size: 10, before: 80 }));
-  doc.sections.forEach((s) => {
+  const multiGroupW = new Set(doc.sections.map((x) => x.group).filter(Boolean)).size > 1;
+  let prevGroupW: string | undefined;
+  doc.sections.forEach((s, idx) => {
+    if (multiGroupW && s.group && s.group !== prevGroupW) {
+      body.push(para(s.group.toUpperCase(), { bold: true, size: 12, align: AlignmentType.CENTER, after: 120, pageBreak: idx > 0 }));
+    }
+    prevGroupW = s.group ?? prevGroupW;
     body.push(
       para(s.title, {
         bold: true,
@@ -314,7 +330,11 @@ export async function exportExcel(doc: ProtocolDoc) {
 
   const groups: { name: string; sections: Section[] }[] = [];
   const personal = doc.sections.filter((s) => !s.newPage);
-  if (personal.length) groups.push({ name: "Личный зачёт", sections: personal });
+  const gNames = Array.from(new Set(personal.map((s) => s.group ?? "Личный зачёт")));
+  for (const gn of gNames) {
+    const short = gn.startsWith("Борьба левой") ? "Левая рука" : gn.startsWith("Борьба правой") ? "Правая рука" : gn.startsWith("Двоеборье") ? "Двоеборье" : gn;
+    groups.push({ name: short, sections: personal.filter((s) => (s.group ?? "Личный зачёт") === gn) });
+  }
   doc.sections
     .filter((s) => s.newPage)
     .forEach((s) => groups.push({ name: s.title.includes("округ") ? "Зачёт по округам" : s.title.includes("субъект") ? "Командный зачёт" : "Судейская коллегия", sections: [s] }));
@@ -339,7 +359,7 @@ export async function exportExcel(doc: ProtocolDoc) {
     if (doc.placeDate) merged(doc.placeDate, font({ bold: true, size: 12 }));
     ws.addRow([]);
     for (let i = 0; i < doc.officials.length; i += 2) merged(doc.officials.slice(i, i + 2).map(officialLine).join("        "), font({ size: 10 }), "left");
-    if (g.name === "Личный зачёт") {
+    if (g === groups[0]) {
       ws.addRow([]);
       doc.info.forEach((l) => merged(l, font({ size: 10 }), "left", l.length > 180 ? 42 : undefined));
       if (doc.requirements) merged(doc.requirements, font({ italic: true, size: 9 }), "left", 40);

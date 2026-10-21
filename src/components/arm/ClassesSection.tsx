@@ -400,6 +400,28 @@ function SystemCard() {
           Система применяется к новым жеребьёвкам. Уже построенные сетки не меняются — перетяните жребий, если нужно.
         </p>
 
+        <div className="mt-1 border-t border-line pt-3 text-sm font-medium">Порядок рук (п. 1.1, по Положению)</div>
+        <div className="flex flex-wrap gap-1.5">
+          {(["left", "right"] as const).map((h) => (
+            <button
+              key={h}
+              className={cn("pill !px-3 !py-1 text-xs", (tournament.firstHand ?? "left") === h && "pill-on")}
+              onClick={() => setTournament({ firstHand: h, secondHandOpen: false })}
+            >
+              Сначала {h === "left" ? "левая" : "правая"}
+            </button>
+          ))}
+        </div>
+        <button
+          className={cn("pill justify-start", (tournament.handStages ?? true) && "pill-on")}
+          onClick={() => setTournament({ handStages: !(tournament.handStages ?? true), secondHandOpen: false })}
+        >
+          <Icon name={(tournament.handStages ?? true) ? "SquareCheck" : "Square"} size={15} /> Вторая рука — после окончания первой на всех столах
+        </button>
+        <p className="text-xs leading-relaxed text-panel-muted">
+          Весовая категория закрепляется за одним столом на обе руки. Пока не закончена первая рука во всех категориях, пульт и табло не выдают схватки второй.
+        </p>
+
         <div className="mt-1 border-t border-line pt-3 text-sm font-medium">Провес при допуске в категорию (п. 8.8)</div>
         <div className="flex flex-wrap gap-1.5">
           {[

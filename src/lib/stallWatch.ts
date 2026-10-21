@@ -26,7 +26,7 @@ export interface Stall {
 }
 
 /** Следит, сколько текущая пара стоит у каждого стола без результата. */
-export function useStallWatch(matches: Match[], tables: number) {
+export function useStallWatch(matches: Match[], tables: number, tour?: Parameters<typeof pendingQueue>[2]) {
   const [now, setNow] = useState(Date.now());
   const [marks, setMarks] = useState<All>(read);
 
@@ -38,11 +38,11 @@ export function useStallWatch(matches: Match[], tables: number) {
   const current = useMemo(() => {
     const res: Record<number, Match> = {};
     for (let t = 1; t <= Math.max(1, tables); t++) {
-      const m = pendingQueue(matches, t)[0];
+      const m = pendingQueue(matches, t, tour)[0];
       if (m) res[t] = m;
     }
     return res;
-  }, [matches, tables]);
+  }, [matches, tables, tour]);
 
   useEffect(() => {
     const prev = read();
