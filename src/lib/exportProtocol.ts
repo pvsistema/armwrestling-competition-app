@@ -29,7 +29,7 @@ function toBase64(buf: ArrayBuffer) {
 const officialLine = (o: [string, string]) => `${o[0]} ________________ ${o[1]}`;
 
 /* ---------------- PDF ---------------- */
-export async function exportPdf(doc: ProtocolDoc, withLogo: boolean) {
+export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { print?: boolean } = {}) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -176,6 +176,17 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean) {
     y += 4;
   }
   if (!doc.sections.length) drawHeaderFooter();
+  if (opts.print) {
+    pdf.autoPrint();
+    const url = URL.createObjectURL(pdf.output("blob"));
+    const w = window.open(url, "_blank");
+    if (!w) {
+      download(pdf.output("blob"), `${doc.fileBase}.pdf`);
+      throw new Error("Браузер заблокировал окно печати — файл PDF сохранён, откройте и распечатайте его.");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return;
+  }
   download(pdf.output("blob"), `${doc.fileBase}.pdf`);
 }
 

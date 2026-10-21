@@ -124,14 +124,19 @@ function handSections(s: State, used: Bracket[], classMap: Record<string, Weight
 export function buildProtocol(
   s: State,
   classMap: Record<string, WeightClass>,
-  opts: { onlyDone?: boolean; part?: ProtocolPart } = {},
+  opts: { onlyDone?: boolean; part?: ProtocolPart; table?: number } = {},
 ): ProtocolDoc {
   const part = opts.part ?? "full";
   const t = s.tournament;
   const amap = Object.fromEntries(s.athletes.map((a) => [a.id, a]));
   const pts = tPoints(t);
   const mode = tMode(t);
-  const used = s.brackets.filter((b) => (!opts.onlyDone || b.done) && (part === "full" || part === "biathlon" || b.hand === part));
+  const used = s.brackets.filter(
+    (b) =>
+      (!opts.onlyDone || b.done) &&
+      (part === "full" || part === "biathlon" || b.hand === part) &&
+      (opts.table == null || b.table === opts.table),
+  );
   const order = (b: Bracket) => Object.keys(classMap).indexOf(b.classKey);
 
   const officials: [string, string][] = [];
@@ -291,10 +296,12 @@ export function buildProtocol(
         : part === "biathlon" && mode === "biathlon"
           ? "Итоговый протокол: двоеборье (сумма левой и правой руки)"
           : "";
-  const partFile = part === "left" ? " — левая рука" : part === "right" ? " — правая рука" : part === "biathlon" ? " — общий" : "";
+  const tableSuffix = opts.table != null ? `, стол ${opts.table}` : "";
+  const partFile =
+    (part === "left" ? " — левая рука" : part === "right" ? " — правая рука" : part === "biathlon" ? " — общий" : "") + tableSuffix;
   return {
     title,
-    subtitle: [t.ekp, partTitle].filter(Boolean).join(" · "),
+    subtitle: [t.ekp, partTitle ? partTitle + tableSuffix : ""].filter(Boolean).join(" · "),
     placeDate,
     officials,
     info,

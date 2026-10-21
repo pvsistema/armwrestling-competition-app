@@ -3,6 +3,7 @@ import { useStore } from "@/lib/store";
 import { Hand } from "@/lib/arm";
 import { handStage, tableBreak, tableFirstLeft, waitingSecond } from "@/lib/queue";
 import { cn } from "@/lib/utils";
+import HandProtocolActions from "./HandProtocolActions";
 
 const gen = (h: Hand) => (h === "left" ? "левой" : "правой");
 const acc = (h: Hand) => (h === "left" ? "левую" : "правую");
@@ -58,6 +59,14 @@ export default function HandStageBar({ table }: { table: number | "all" }) {
             : ` · идёт ${nom(st.second)} рука.`}
           {!allDone && typeof table === "number" && ` На других столах ${nom(st.first)} ещё идёт (осталось ${st.firstLeft}).`}
         </span>
+      )}
+      {left === 0 && total > 0 && (
+        <div className="flex basis-full flex-wrap items-center gap-2">
+          <span className="text-xs text-panel-muted">
+            Протокол {gen(st.first)} руки{typeof table === "number" ? ` (стол ${table})` : ""}:
+          </span>
+          <HandProtocolActions hand={st.first} table={typeof table === "number" ? table : undefined} compact />
+        </div>
       )}
       {waiting > 0 && !tournament.secondHandOpen && (
         <button
