@@ -7,6 +7,7 @@ import BracketSection from "@/components/arm/BracketSection";
 import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
+import HelpSheet from "@/components/arm/HelpSheet";
 import ImportAthletes from "@/components/arm/ImportAthletes";
 import StallAlert from "@/components/arm/StallAlert";
 import Icon from "@/components/ui/icon";
@@ -38,6 +39,7 @@ function Shell() {
           ))}
         </div>
       )}
+      <HelpSheet />
       <button className="pill" onClick={() => setSection("results")}>
         <Icon name="Printer" size={16} /> Печать
       </button>

@@ -36,7 +36,7 @@ export function TimerControls({ table }: { table: number }) {
           </button>
         </>
       )}
-      <span className="ml-auto hidden text-xs text-panel-muted xl:inline">Таймер сразу виден на табло. Клавиши: T — {presets[0].label}, Y — {presets[1].label}, U — свой.</span>
+      <span className="ml-auto hidden text-xs text-panel-muted xl:inline">Таймер сразу виден на табло. Клавиши: T — {presets[0].label}, Y — {presets[1].label}, U — свой, F1 — памятка.</span>
     </div>
   );
 }
