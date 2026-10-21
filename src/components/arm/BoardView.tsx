@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, fmtKg, surname } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, Match, fmtKg, surname } from "@/lib/arm";
 import { pendingQueue } from "@/lib/queue";
 import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
@@ -34,9 +34,40 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   const focusTable = focus !== "all" && focus <= tables ? focus : "all";
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 15000);
+    const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  type DM = Match & { decidedAt?: number };
+  const lastOf = (t: number | "all") =>
+    (matches as DM[])
+      .filter((m) => m.winner && (t === "all" || m.table === t))
+      .sort((a, b) => (b.decidedAt ?? 0) - (a.decidedAt ?? 0));
+  const fresh = (m?: DM) => !!m?.decidedAt && now.getTime() - m.decidedAt < 10000;
+
+  const winnerBanner = (m: DM, big: boolean) => {
+    const loser = m.winner === m.a ? m.b : m.a;
+    const blue = m.winner === m.a;
+    return (
+      <div
+        className={cn(
+          "flex animate-scale-in flex-col items-center justify-center gap-2 rounded-lg border-4 text-center",
+          blue ? "border-corner-blue bg-corner-blue/10" : "border-corner-red bg-corner-red/10",
+          big ? "flex-1 p-10" : "flex-1 p-4",
+        )}
+      >
+        <div className="flex items-center gap-2 font-mono text-sm uppercase text-panel-muted md:text-lg">
+          <Icon name="Trophy" size={big ? 28 : 18} className="text-primary" /> Победитель · {blue ? "синий угол" : "красный угол"}
+        </div>
+        <div className={cn("font-semibold leading-tight tracking-tight", blue ? "text-corner-blue" : "text-corner-red", big ? "text-[clamp(44px,7vw,128px)]" : "text-[clamp(22px,2.6vw,44px)]")}>
+          {amap[m.winner!]?.name}
+        </div>
+        <div className={cn("text-panel-muted", big ? "text-xl md:text-3xl" : "text-sm md:text-base")}>
+          против {amap[loser]?.name}
+        </div>
+      </div>
+    );
+  };
 
   const label = (key: string) => {
     const b = brackets.find((x) => x.key === key);
@@ -86,7 +117,8 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   function tableCard(table: number, onOpen: () => void, compact: boolean) {
     const q = pendingQueue(matches, table);
     const cur = q[0];
-    const next = q.slice(1, compact ? 2 : 3);
+    const next = q.slice(1, compact ? 3 : 4);
+    const last = lastOf(table)[0];
     return (
       <button
         key={table}
@@ -102,7 +134,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         <div className="px-3 pt-2 empty:hidden">
           <TimerBoard table={table} size="md" sound={!!standalone} />
         </div>
-        {cur ? (
+        {fresh(last) ? (
+          <div className="flex flex-1 p-3">{winnerBanner(last, false)}</div>
+        ) : cur ? (
           <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
             {name(cur.a, "blue", compact ? "md" : "lg")}
             <div className="pl-1 font-mono text-xs text-panel-muted md:text-sm">против</div>
@@ -111,17 +145,26 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         ) : (
           <div className="flex flex-1 items-center justify-center p-4 text-lg text-panel-muted">Схваток нет</div>
         )}
-        {next.length > 0 && (
-          <div className="border-t border-line px-4 py-2 text-sm md:text-base">
-            <span className="mr-2 font-mono text-xs text-panel-muted">ДАЛЕЕ</span>
-            {next.map((m, i) => (
-              <span key={m.id} className="mr-3">
-                {i > 0 && <span className="mr-3 text-line">|</span>}
+        <div className="border-t border-line bg-surface/60 px-4 py-2.5">
+          <div className="mb-1 font-mono text-xs text-panel-muted">СЛЕДУЮЩИЕ ПАРЫ</div>
+          {(fresh(last) ? q.slice(0, next.length + 1) : next).map((m, i) => (
+            <div key={m.id} className="flex items-baseline gap-2 text-base md:text-lg">
+              <span className="w-5 shrink-0 font-mono text-xs text-panel-muted">{i + (fresh(last) ? 1 : 2)}.</span>
+              <span className="truncate font-medium">
                 {surname(amap[m.a]?.name ?? "")} — {surname(amap[m.b]?.name ?? "")}
               </span>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+          {!next.length && !fresh(last) && (
+            <div className="text-sm text-panel-muted">{cur ? "Следующий тур составится после окончания текущего" : "—"}</div>
+          )}
+          {last && !fresh(last) && (
+            <div className="mt-1.5 flex items-center gap-1.5 border-t border-line/60 pt-1.5 text-sm text-panel-muted">
+              <Icon name="Trophy" size={14} className="text-primary" /> Последняя: победил{" "}
+              <span className="font-medium text-foreground">{surname(amap[last.winner!]?.name ?? "")}</span>
+            </div>
+          )}
+        </div>
       </button>
     );
   }
@@ -143,8 +186,10 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   function singleTable(table: number, single: boolean) {
     const t: number | "all" = single ? "all" : table;
     const queue = pendingQueue(matches, t);
+    const lastOne = lastOf(t)[0];
+    const showWin = fresh(lastOne);
     const current = queue[0];
-    const next = queue.slice(1, 5);
+    const next = showWin ? queue.slice(0, 4) : queue.slice(1, 5);
     const last = matches
       .filter((m) => m.winner && (t === "all" || m.table === t))
       .sort((a, b) => ((b as { decidedAt?: number }).decidedAt ?? 0) - ((a as { decidedAt?: number }).decidedAt ?? 0))
@@ -152,7 +197,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         <TimerBoard table={single ? (current?.table ?? 1) : table} size="lg" sound={!!standalone} />
-        {current ? (
+        {showWin ? (
+          winnerBanner(lastOne, true)
+        ) : current ? (
           <div className="flex flex-1 flex-col justify-center rounded-lg border border-line bg-frame p-3">
             <div className="mb-3 flex flex-wrap items-center justify-center gap-3 text-center text-base md:text-xl">
               <span className="rounded-full bg-primary px-4 py-1 font-semibold text-primary-foreground">СЕЙЧАС · СТОЛ {current.table}</span>
@@ -193,14 +240,16 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
               {next.map((m, i) => (
                 <div key={m.id} className="rounded-lg border border-line bg-panel px-4 py-3">
                   <div className="cat">
-                    #{i + 2} · {label(m.key)}
+                    #{i + (showWin ? 1 : 2)} · {label(m.key)}
                   </div>
                   <div className="mt-1 text-xl font-medium md:text-3xl">
                     {surname(amap[m.a]?.name ?? "")} — {surname(amap[m.b]?.name ?? "")}
                   </div>
                 </div>
               ))}
-              {!next.length && <div className="text-panel-muted">Очередь пуста</div>}
+              {!next.length && (
+                <div className="text-panel-muted">{current ? "Следующий тур составится после окончания текущего" : "Очередь пуста"}</div>
+              )}
             </div>
           </div>
           <div>
