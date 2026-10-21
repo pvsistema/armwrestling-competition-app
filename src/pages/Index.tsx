@@ -55,13 +55,13 @@ function Shell() {
   );
 
   return (
-    <div className="min-h-screen p-2 pb-1 sm:px-3 print:bg-white print:p-0">
-      <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 overflow-hidden rounded-stage border border-line bg-background px-4 pb-7 pt-0 text-foreground shadow-sm sm:px-10 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
-        <div className="navy-band -mx-4 border-b-2 border-gold/70 px-4 pb-3 text-white sm:-mx-10 sm:px-10 print:hidden">
-          <div className="tricolor -mx-4 mb-3 sm:-mx-10" />
+    <div className="min-h-screen px-1 pb-0.5 pt-1 sm:px-1.5 print:bg-white print:p-0">
+      <div className="flex min-h-[calc(100vh-24px)] flex-col gap-3 overflow-hidden rounded-[14px] border border-line bg-background px-2 pb-3 pt-0 text-foreground shadow-sm sm:px-4 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
+        <div className="navy-band -mx-2 border-b-2 border-gold/70 px-3 pb-2 text-white sm:-mx-4 sm:px-5 print:hidden">
+          <div className="tricolor -mx-3 mb-2 sm:-mx-5" />
           <AppHeader section={section} onSection={setSection} right={right} />
         </div>
-        <main className="flex flex-1 flex-col gap-4">
+        <main className="flex flex-1 flex-col gap-3">
           <PrintFooter />
           <RestoreBackup />
           <HandDoneDialog />
@@ -90,7 +90,7 @@ function Shell() {
           )}
         </main>
       </div>
-      <footer className="flex justify-end px-3 pt-1 text-xs font-semibold text-gold print:hidden">
+      <footer className="flex justify-end px-3 pt-0.5 text-xs font-semibold text-gold print:hidden">
         Разработал: Ипатов Сергей Геннадьевич
       </footer>
     </div>

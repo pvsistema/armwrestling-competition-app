@@ -117,10 +117,10 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   };
 
   return (
-    <div className={cn("flex flex-col gap-4 bg-background text-foreground", standalone ? "h-screen overflow-hidden p-5 md:p-8" : "min-h-[70vh] rounded-stage border border-line p-5 md:p-8")}>
-      <div className="tricolor -mx-5 -mt-5 mb-1 md:-mx-8 md:-mt-8" />
+    <div className={cn("flex flex-col gap-4 bg-background text-foreground", standalone ? "h-screen overflow-hidden p-5 md:p-8" : "overflow-hidden rounded-[14px] border border-line p-3 md:p-4")}>
+      <div className={cn("tricolor mb-1", standalone ? "-mx-5 -mt-5 md:-mx-8 md:-mt-8" : "-mx-3 -mt-3 md:-mx-4 md:-mt-4")} />
       <header className="flex items-center gap-4">
-        {(tournament.showLogo ?? true) && <Logo hq className="h-14 w-14 shadow md:h-20 md:w-20" />}
+        {(tournament.showLogo ?? true) && <Logo hq className={cn("shadow", standalone ? "h-14 w-14 md:h-20 md:w-20" : "h-12 w-12 md:h-14 md:w-14")} />}
         <div className="min-w-0">
           <div className="truncate text-xl font-semibold tracking-tight md:text-3xl">{tournament.name || "Соревнования по армрестлингу"}</div>
           {(focusTable !== "all" && tables > 1) || stageText ? (
@@ -150,7 +150,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         <HandBreak first={stage.first} second={stage.second} size="hero" />
       ) : focusTable === "all" && tables > 1 ? (
         <div
-          className="flex min-h-0 flex-1 flex-col gap-3 md:grid md:gap-3"
+          className={cn("flex min-h-0 flex-col gap-3 md:grid md:gap-3", standalone && "flex-1")}
           style={{ gridTemplateColumns: `repeat(${tables}, minmax(0, 1fr))` }}
         >
           {Array.from({ length: tables }, (_, i) => i + 1).map((t) => (
@@ -184,9 +184,11 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
             <span className="rounded-full bg-primary px-3 py-0.5 text-sm font-semibold text-primary-foreground md:text-base">Стол {table}</span>
             <Icon name="Maximize2" size={16} className="ml-auto shrink-0 text-panel-muted opacity-0 transition group-hover:opacity-100" />
           </div>
-          <span className="line-clamp-2 min-h-[2.5em] text-xs leading-tight text-panel-muted md:text-sm">
-            {cur ? `${label(cur.key)} · ${GROUP_LABEL[cur.group]}` : ""}
-          </span>
+          {cur && (
+            <span className="line-clamp-2 min-h-[2.5em] text-xs leading-tight text-panel-muted md:text-sm">
+              {`${label(cur.key)} · ${GROUP_LABEL[cur.group]}`}
+            </span>
+          )}
         </div>
         {resting ? (
           <div className="flex flex-1 flex-col gap-2 p-3">
@@ -211,7 +213,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
             {name(cur.b, "red", nameSize, cur)}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center p-4 text-center text-lg text-panel-muted">
+          <div className={cn("flex flex-1 items-center justify-center p-4 text-center text-lg text-panel-muted", !standalone && "min-h-[120px] flex-none py-8")}>
             {waitingSecond(matches, table, tournament) > 0
               ? `Ждём окончания ${stage.first === "left" ? "левой" : "правой"} руки на других столах`
               : "Схваток нет"}

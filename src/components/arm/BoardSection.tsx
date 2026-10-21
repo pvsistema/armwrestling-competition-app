@@ -20,7 +20,7 @@ export default function BoardSection() {
 
   return (
     <div className="flex flex-1 flex-col gap-3">
-      <div className="win flex-row flex-wrap items-center gap-2 px-4 py-3">
+      <div className="win flex-row flex-wrap items-center gap-2 px-3 py-2">
         <span className="mr-1 text-sm text-panel-muted">Показывать на табло:</span>
         {tables > 1 && (
           <button className={cn("pill", focus === "all" && "pill-on")} onClick={() => setFocus("all")}>
@@ -32,13 +32,16 @@ export default function BoardSection() {
             Стол {t}
           </button>
         ))}
-        <button className="btn-blue ml-auto" onClick={open}>
+        <span
+          className="ml-auto hidden cursor-help items-center gap-1 text-xs text-panel-muted xl:inline-flex"
+          title="Перетащите окно табло на проектор или второй монитор и нажмите «Полный экран» (или клавишу F). Выбор стола здесь сразу меняется и на табло. На самом табло тоже можно нажать на любой стол — он развернётся на весь экран."
+        >
+          <Icon name="Info" size={14} /> проектор / второй монитор, клавиша F — полный экран
+        </span>
+        <button className="btn-blue !py-2.5 xl:ml-0 ml-auto" onClick={open}>
           <Icon name="ExternalLink" size={17} /> Открыть табло в отдельном окне
         </button>
       </div>
-      <p className="text-xs text-foreground/70">
-        Перетащите окно табло на проектор или второй монитор и нажмите «Полный экран» (или клавишу F). Выбор стола здесь сразу меняется и на табло. На самом табло тоже можно нажать на любой стол — он развернётся на весь экран.
-      </p>
       <BoardView focus={focus} onFocus={setFocus} />
     </div>
   );
