@@ -24,8 +24,8 @@ export default function NeedGroups({ onGo, onDone }: { onGo: () => void; onDone:
               <div className="cat">ШАГ 1 ИЗ 2</div>
               <h2 className="text-2xl font-semibold tracking-tight">Сначала выберите категории участников</h2>
               <p className="mt-1 text-panel-muted">
-                После этого каждый новый участник будет автоматически распределён по возрасту и весу. Совершеннолетние юниоры
-                дополнительно попадут во взрослую категорию.
+                После этого каждый новый участник будет автоматически распределён по возрасту и весу. Совершеннолетних юниоров
+                можно по желанию дополнительно заявить во взрослую категорию.
               </p>
             </div>
           </div>
@@ -48,7 +48,7 @@ export default function NeedGroups({ onGo, onDone }: { onGo: () => void; onDone:
             })}
           </div>
           <p className="-mt-2 text-xs text-panel-muted">
-            Можно отметить несколько наборов. Чтобы совершеннолетние юниоры выступали и среди взрослых, отметьте также «Мужчины и женщины».
+            Можно отметить несколько наборов. Чтобы совершеннолетних юниоров можно было по желанию заявить и среди взрослых, отметьте также «Мужчины и женщины».
           </p>
           <div className="flex flex-wrap gap-2">
             <button className="btn-blue" disabled={!sel.length} onClick={apply}>

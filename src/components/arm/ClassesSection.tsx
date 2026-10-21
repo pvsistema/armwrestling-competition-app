@@ -496,14 +496,8 @@ function SystemCard() {
         <p className="text-xs leading-relaxed text-panel-muted">
           Врач, страховка и комиссия по допуску (п. 3.1, 7). Без всех трёх отметок спортсмен не попадает в жеребьёвку.
         </p>
-        <button
-          className={cn("pill mt-1 justify-start", (tournament.juniorsToAdults ?? true) && "pill-on")}
-          onClick={() => setTournament({ juniorsToAdults: !(tournament.juniorsToAdults ?? true) })}
-        >
-          <Icon name={(tournament.juniorsToAdults ?? true) ? "SquareCheck" : "Square"} size={15} /> Совершеннолетних юниоров — и во взрослые
-        </button>
-        <p className="text-xs leading-relaxed text-panel-muted">
-          Юниоры от 18 лет выступают в своей юниорской категории и дополнительно во взрослой (мужчины / женщины) по своему весу. У отдельного спортсмена можно отключить в «Участниках».
+        <p className="rounded-[12px] bg-gold-soft/60 px-3 py-2 text-xs leading-relaxed text-tip-foreground">
+          Совершеннолетние юниоры (от 18 лет) выступают в своей юниорской категории. Во взрослую их заявляют только по желанию — отметкой «+ взрослые» при регистрации или в таблице участников.
         </p>
       </div>
     </div>

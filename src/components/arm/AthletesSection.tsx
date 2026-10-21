@@ -16,6 +16,7 @@ const EMPTY = {
   district: "",
   hands: ["left", "right"] as Hand[],
   para: "" as ParaClass | "",
+  adult: false,
 };
 
 export default function AthletesSection() {
@@ -66,6 +67,7 @@ export default function AthletesSection() {
       rank: f.rank || undefined,
       district: f.district || undefined,
       para: f.para || undefined,
+      adult: (preview?.canAdult && f.adult) || undefined,
     });
     toast({ title: `Участник добавлен: ${f.name.trim()}`, description: preview?.text ?? "" });
     setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district, para: f.para });
@@ -76,9 +78,9 @@ export default function AthletesSection() {
     const by = dm ? parseInt(dm[3], 10) : parseInt(f.birthYear, 10);
     if (!by || by < 1930 || by > year - 10) return null;
     const w = f.weight ? parseFloat(f.weight.replace(",", ".")) : null;
-    const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands, para: f.para || undefined };
+    const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands, para: f.para || undefined, adult: f.adult };
     return distribution(tmp, groups, tournament);
-  }, [f.birthYear, f.weight, f.gender, f.hands, f.para, groups, tournament, year]);
+  }, [f.birthYear, f.weight, f.gender, f.hands, f.para, f.adult, groups, tournament, year]);
 
   const toggleHand = (h: Hand) =>
     setF((p) => ({ ...p, hands: p.hands.includes(h) ? p.hands.filter((x) => x !== h) : [...p.hands, h] }));
@@ -176,6 +178,19 @@ export default function AthletesSection() {
                 <Icon name={preview.ok ? "Sparkles" : "Info"} size={16} className="mt-0.5 shrink-0" />
                 <span>{preview.text}</span>
               </div>
+            )}
+            {preview?.canAdult && (
+              <button
+                type="button"
+                onClick={() => setF({ ...f, adult: !f.adult })}
+                className={cn(
+                  "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                  f.adult ? "border-primary bg-primary/10 text-foreground" : "border-line text-panel-muted hover:text-foreground",
+                )}
+              >
+                <Icon name={f.adult ? "SquareCheck" : "Square"} size={17} className="shrink-0 text-primary" />
+                Заявить также во взрослую категорию ({preview.adultName})
+              </button>
             )}
             <Field label="Руки" error={err.hands}>
               <div className="flex gap-2">
@@ -292,7 +307,7 @@ export default function AthletesSection() {
 }
 
 /** Куда автоматически попадёт спортсмен. */
-function distribution(a: Athlete, groups: AgeGroup[], t: Tournament): { ok: boolean; text: string } {
+function distribution(a: Athlete, groups: AgeGroup[], t: Tournament): { ok: boolean; text: string; canAdult?: boolean; adultName?: string } {
   const year = tournamentYear(t);
   const age = year - a.birthYear;
   const g = groupOf(a, groups, year);
@@ -303,13 +318,15 @@ function distribution(a: Athlete, groups: AgeGroup[], t: Tournament): { ok: bool
         ? `ПОДА ${a.para}: нет группы этого класса для возраста ${age} — добавьте набор «Пара-армрестлинг ПОДА» в «Категориях».`
         : `Возраст ${age}: нет подходящей возрастной группы — добавьте её в «Категориях».`,
     };
-  const ag = adultOn(a, t) ? adultGroupFor(a, groups, year) : null;
+  const pg = adultGroupFor(a, groups, year);
+  const extra = { canAdult: !!pg, adultName: pg?.name };
+  const ag = adultOn(a, t) ? pg : null;
   if (a.weight == null)
-    return { ok: true, text: `${g.name}${ag ? ` + ${ag.name}` : ""} — весовая категория определится после взвешивания.` };
+    return { ok: true, text: `${g.name}${ag ? ` + ${ag.name}` : ""} — весовая категория определится после взвешивания.`, ...extra };
   const c = classOf(a, groups, year, t.tolerance ?? 0);
   const ad = adultClassOf(a, groups, t);
   const parts = [c && `${g.name} ${c.label}`, ad && `${ad.groupName} ${ad.label}`].filter(Boolean);
-  return { ok: !!c, text: c ? `Распределён: ${parts.join(" + ")}` : "Нет подходящей весовой категории." };
+  return { ok: !!c, text: c ? `Распределён: ${parts.join(" + ")}` : "Нет подходящей весовой категории.", ...extra };
 }
 
 /** Подсказка по весу: провес, заявка выше, нет допуска. */
@@ -435,7 +452,7 @@ function Row({
             <button
               className={cn("rounded-full px-2 py-0.5 text-[11px]", adult ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}
               onClick={() => onPatch({ adult: !adult })}
-              title="Совершеннолетний юниор выступает также во взрослой категории"
+              title="По желанию: заявить совершеннолетнего юниора также во взрослую категорию"
             >
               + взрослые
             </button>

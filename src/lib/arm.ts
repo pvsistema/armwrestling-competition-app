@@ -23,7 +23,7 @@ export interface Athlete {
   district?: string;
   upClass?: boolean;
   absolute?: boolean;
-  /** Совершеннолетний юниор также выступает во взрослой категории. undefined — по настройке турнира. */
+  /** Совершеннолетний юниор по желанию заявлен также во взрослую категорию. */
   adult?: boolean;
   /** Пара-армрестлинг (ПОДА): класс по положению за столом. */
   para?: ParaClass;
@@ -147,7 +147,7 @@ export interface Tournament {
   handFlow?: HandFlow;
   /** Секретарь вручную разрешил начать вторую руку раньше. */
   secondHandOpen?: boolean;
-  /** Совершеннолетние юниоры автоматически заявляются и во взрослые категории (по умолчанию — да). */
+  /** Устарело: юниоры заявляются во взрослые только вручную. */
   juniorsToAdults?: boolean;
 }
 
@@ -304,7 +304,7 @@ export function adultGroupFor(a: Pick<Athlete, "gender" | "birthYear" | "para">,
   return groups.find((g) => g.id !== main.id && g.gender === a.gender && isAdultGroup(g) && age >= Math.min(g.ageMin, ADULT_AGE)) ?? null;
 }
 
-export const adultOn = (a: Athlete, t: Tournament) => a.adult ?? t.juniorsToAdults ?? true;
+export const adultOn = (a: Athlete, _t?: Tournament) => !!a.adult;
 
 /** Взрослая весовая категория совершеннолетнего юниора (если он в неё заявлен). */
 export function adultClassOf(a: Athlete, groups: AgeGroup[], t: Tournament): WeightClass | null {
