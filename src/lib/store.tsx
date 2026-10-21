@@ -99,6 +99,8 @@ interface Ctx extends State {
   canUndo: boolean;
   resetDemo: () => void;
   resetEmpty: () => void;
+  exportData: () => State;
+  importData: (data: State) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -218,6 +220,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const exportData = useCallback(() => s, [s]);
+  const importData = useCallback((data: State) => setS(data), []);
+
   const value: Ctx = {
     ...s,
     amap,
@@ -234,6 +239,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     canUndo: !!lastDecided,
     resetDemo,
     resetEmpty,
+    exportData,
+    importData,
   };
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
