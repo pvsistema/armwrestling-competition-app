@@ -302,7 +302,7 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
   });
 
   const docx = new Document({
-    creator: "Армспорт",
+    creator: "Рукоборец",
     title: doc.title,
     sections: [
       {
@@ -325,7 +325,7 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
 export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Армспорт";
+  wb.creator = "Рукоборец";
   const thin = { style: "thin" as const, color: { argb: "FF000000" } };
   const box = { top: thin, left: thin, bottom: thin, right: thin };
   const font = (o: { bold?: boolean; italic?: boolean; size?: number } = {}) => ({ name: "Times New Roman", size: o.size ?? 10, bold: o.bold, italic: o.italic });

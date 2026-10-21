@@ -39,7 +39,7 @@ export async function readTournamentFile(file: File): Promise<State> {
     !Array.isArray(data.brackets) ||
     !Array.isArray(data.matches)
   ) {
-    throw new Error("Это не файл турнира Армспорт");
+    throw new Error("Это не файл турнира Рукоборец");
   }
   return { ...data, order: typeof data.order === "number" ? data.order : data.matches.length + 1 };
 }
