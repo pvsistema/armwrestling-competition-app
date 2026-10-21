@@ -8,6 +8,7 @@ import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
+import HomeSection from "@/components/arm/HomeSection";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
 import RestoreBackup from "@/components/arm/RestoreBackup";
 import PrintFooter from "@/components/arm/PrintFooter";
@@ -19,7 +20,7 @@ import { StoreProvider, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function Shell() {
-  const [section, setSection] = useState<Section>("judge");
+  const [section, setSection] = useState<Section>("home");
   const [table, setTable] = useState<number | "all">("all");
   const { tournament, resetEmpty } = useStore();
 
@@ -67,6 +68,7 @@ function Shell() {
             }}
           />
           {section === "judge" && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}
+          {section === "home" && <HomeSection onSection={setSection} />}
           {section === "athletes" && <AthletesSection />}
           {section === "classes" && <ClassesSection />}
           {section === "bracket" && <BracketSection />}

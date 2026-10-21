@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { useStore } from "@/lib/store";
 
-export type Section = "athletes" | "classes" | "bracket" | "judge" | "results" | "board";
+export type Section = "home" | "athletes" | "classes" | "bracket" | "judge" | "results" | "board";
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
+  { id: "home", label: "Главная", icon: "House" },
   { id: "athletes", label: "Участники", icon: "Users" },
   { id: "classes", label: "Категории", icon: "Scale" },
   { id: "bracket", label: "Сетка", icon: "GitFork" },
@@ -27,7 +28,7 @@ export default function AppHeader({ section, onSection, right }: Props) {
   const showLogo = tournament.showLogo ?? true;
   return (
     <header className="relative flex items-center gap-7 print:hidden">
-      <div className="flex items-center gap-3">
+      <div className="flex cursor-pointer items-center gap-3" onClick={() => onSection("home")} title="На главную">
         {showLogo && <Logo className="h-11 w-11 shadow-md" />}
         <div className="flex flex-col items-center text-center text-[0.9em] font-semibold leading-[1.15]">
           <span>Федерация</span>
@@ -36,7 +37,7 @@ export default function AppHeader({ section, onSection, right }: Props) {
         </div>
       </div>
       <nav className="hidden items-center gap-[22px] font-medium lg:flex">
-        {SECTIONS.map((s) => (
+        {SECTIONS.filter((s) => s.id !== "home").map((s) => (
           <button
             key={s.id}
             onClick={() => onSection(s.id)}

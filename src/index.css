@@ -156,3 +156,26 @@
     color: #000 !important;
   }
 }
+
+@layer components {
+  .flag-wave {
+    transform-origin: left center;
+    animation: flag-wave 4.5s ease-in-out infinite;
+  }
+  .flag-sheen {
+    background: linear-gradient(100deg, transparent 0%, rgba(0, 0, 0, 0.12) 25%, rgba(255, 255, 255, 0.25) 45%, rgba(0, 0, 0, 0.1) 70%, transparent 100%);
+    background-size: 220% 100%;
+    animation: flag-sheen 4.5s ease-in-out infinite;
+  }
+  @keyframes flag-wave {
+    0%, 100% { transform: perspective(500px) rotateY(0deg) skewY(0deg); }
+    50% { transform: perspective(500px) rotateY(-10deg) skewY(-1.5deg); }
+  }
+  @keyframes flag-sheen {
+    0%, 100% { background-position: 100% 0; }
+    50% { background-position: 0% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .flag-wave, .flag-sheen { animation: none; }
+  }
+}
