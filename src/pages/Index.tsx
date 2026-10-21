@@ -82,6 +82,9 @@ function Shell() {
             </div>
           )}
         </main>
+        <footer className="-mb-3 mt-2 border-t border-line pt-4 text-center text-sm text-panel-muted print:hidden">
+          Разработал: <span className="font-medium text-foreground">Ипатов Сергей Геннадьевич</span>
+        </footer>
       </div>
     </div>
   );
