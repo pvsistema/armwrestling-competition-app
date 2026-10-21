@@ -8,6 +8,7 @@ import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import ImportAthletes from "@/components/arm/ImportAthletes";
+import StallAlert from "@/components/arm/StallAlert";
 import Icon from "@/components/ui/icon";
 import { StoreProvider, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,12 @@ function Shell() {
         <div className="tricolor -mx-4 mb-1 sm:-mx-10 print:hidden" />
         <AppHeader section={section} onSection={setSection} right={right} />
         <main className="flex flex-1 flex-col gap-4">
+          <StallAlert
+            onGoJudge={(t) => {
+              setTable(t);
+              setSection("judge");
+            }}
+          />
           {section === "judge" && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}
           {section === "athletes" && <AthletesSection />}
           {section === "classes" && <ClassesSection />}
