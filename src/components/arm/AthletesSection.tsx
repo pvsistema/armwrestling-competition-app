@@ -26,21 +26,32 @@ export default function AthletesSection() {
   const [f, setF] = useState(EMPTY);
   const [err, setErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit">("all");
+  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit" | "adult">("all");
   const needAdmit = !!tournament.requireAdmit;
   const notAdmitted = athletes.filter((a) => !isAdmitted(a, tournament)).length;
 
   const weighed = athletes.filter((a) => a.weight != null).length;
+  const inAdult = (a: Athlete) => adultOn(a, tournament) && !!adultGroupFor(a, groups, year);
+  const adultCount = athletes.filter(inAdult).length;
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return athletes
       .filter((a) =>
-        filter === "all" ? true : filter === "weighed" ? a.weight != null : filter === "noadmit" ? !isAdmitted(a, tournament) : a.weight == null,
+        filter === "all"
+          ? true
+          : filter === "weighed"
+            ? a.weight != null
+            : filter === "noadmit"
+              ? !isAdmitted(a, tournament)
+              : filter === "adult"
+                ? inAdult(a)
+                : a.weight == null,
       )
       .filter((a) => !s || `${a.name} ${a.club} ${a.city}`.toLowerCase().includes(s))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
-  }, [athletes, q, filter, tournament]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [athletes, q, filter, tournament, groups, year]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,6 +252,14 @@ export default function AthletesSection() {
               {l}
             </button>
           ))}
+          <button
+            onClick={() => setFilter(filter === "adult" ? "all" : "adult")}
+            className={cn("pill", filter === "adult" && "pill-on")}
+            title="Совершеннолетние юниоры, заявленные по желанию и во взрослую категорию"
+          >
+            <Icon name="Layers" size={15} /> Юниоры во взрослых
+            <span className={cn("rounded-full px-1.5 font-mono text-xs", filter === "adult" ? "bg-white/20" : "bg-gold-soft text-tip-foreground")}>{adultCount}</span>
+          </button>
         </div>
 
         <div className="win flex-1">
@@ -289,7 +308,7 @@ export default function AthletesSection() {
                 {!list.length && (
                   <tr>
                     <td colSpan={8} className="px-4 py-10 text-center text-panel-muted">
-                      Никого не найдено
+                      {filter === "adult" ? "Пока никто из юниоров не заявлен во взрослую категорию. Отметьте «+ взрослые» у нужного спортсмена." : "Никого не найдено"}
                     </td>
                   </tr>
                 )}
