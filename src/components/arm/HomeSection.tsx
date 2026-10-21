@@ -35,20 +35,20 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <section className="relative overflow-hidden rounded-stage border border-line bg-panel px-6 py-10 shadow-sm md:px-12 md:py-14">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[hsl(var(--flag-blue))]/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-[hsl(var(--flag-red))]/10 blur-3xl" />
+      <section className="navy-band relative overflow-hidden rounded-stage border-2 border-gold/60 px-6 py-10 text-white shadow-xl md:px-12 md:py-14">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-gold/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-copper/40 blur-3xl" />
 
         <div className="relative grid items-center gap-10 lg:grid-cols-[auto_1fr_auto]">
           <div className="flex justify-center">
             <div className="relative">
-              <div className="absolute inset-0 animate-pulse rounded-full bg-[hsl(var(--flag-blue))]/15 blur-2xl" />
-              <Logo hq className="relative h-44 w-44 shadow-2xl ring-4 ring-white md:h-56 md:w-56" />
+              <div className="absolute inset-0 animate-pulse rounded-full bg-gold/40 blur-2xl" />
+              <Logo hq className="relative h-44 w-44 shadow-2xl ring-4 ring-gold md:h-56 md:w-56" />
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left">
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-4 text-sm font-semibold">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-gold/50 bg-white/10 py-1.5 pl-1.5 pr-4 text-sm font-semibold text-white backdrop-blur">
               <span className="flex h-5 w-7 flex-col overflow-hidden rounded-[3px] ring-1 ring-black/10">
                 <span className="flex-1 bg-[hsl(var(--flag-white))]" />
                 <span className="flex-1 bg-[hsl(var(--flag-blue))]" />
@@ -56,15 +56,20 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
               </span>
               Российское ПО
             </div>
-            <h1 className="text-[clamp(44px,6.5vw,88px)] font-bold leading-[0.95] tracking-[-0.035em]">Рукоборец</h1>
-            <p className="max-w-xl text-lg text-panel-muted md:text-xl">
+            <h1 className="gold-text pb-2 text-[clamp(44px,6.5vw,88px)] font-bold leading-[0.95] tracking-[-0.035em] drop-shadow-[0_2px_0_rgba(0,0,0,0.25)]">
+              Рукоборец
+            </h1>
+            <p className="max-w-xl text-lg text-white/80 md:text-xl">
               Программа для проведения соревнований по армрестлингу — от взвешивания до итоговых протоколов по правилам ФАР.
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3 lg:justify-start">
-              <button className="btn-blue !px-6 !py-3 text-base" onClick={() => onSection(next)}>
+              <button className="btn-gold !px-6 !py-3 text-base" onClick={() => onSection(next)}>
                 <Icon name="Play" size={18} /> {nextLabel}
               </button>
-              <button className="pill !px-5 !py-3" onClick={() => onSection("board")}>
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-3 font-medium text-white transition hover:bg-white/20"
+                onClick={() => onSection("board")}
+              >
                 <Icon name="Monitor" size={17} /> Табло
               </button>
             </div>
@@ -73,7 +78,9 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
           <div className="hidden justify-center lg:flex">
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-start">
-                <div className="h-56 w-1.5 rounded-full bg-gradient-to-b from-neutral-300 to-neutral-500 shadow" />
+                <div className="relative h-56 w-1.5 rounded-full bg-gradient-to-b from-[hsl(45_85%_72%)] to-[hsl(36_60%_38%)] shadow">
+                  <span className="absolute -left-1 -top-2 h-3.5 w-3.5 rounded-full bg-gold shadow" />
+                </div>
                 <Flag className="-ml-0.5 mt-1 h-28 w-44" />
               </div>
             </div>
@@ -82,7 +89,7 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
       </section>
 
       <section className="grid gap-4 md:grid-cols-[1.1fr_2fr]">
-        <div className="win gap-3 p-5">
+        <div className="win gap-3 border-t-4 border-t-gold p-5">
           <div className="cat">ТЕКУЩИЙ ТУРНИР</div>
           <div className="text-xl font-semibold leading-snug">{t.name || "Название не задано"}</div>
           {when && (
@@ -96,9 +103,9 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
               [brackets.length, "сеток"],
               [`${done}/${matches.length}`, "схваток"],
             ].map(([v, l]) => (
-              <div key={String(l)} className="rounded-lg bg-surface px-2 py-3">
-                <div className="font-mono text-2xl font-semibold">{v}</div>
-                <div className="text-xs text-panel-muted">{l}</div>
+              <div key={String(l)} className="rounded-lg bg-navy px-2 py-3 text-white">
+                <div className="font-mono text-2xl font-semibold text-gold">{v}</div>
+                <div className="text-xs text-white/70">{l}</div>
               </div>
             ))}
           </div>
@@ -112,10 +119,10 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
             <button
               key={s.id}
               onClick={() => onSection(s.id)}
-              className="group flex flex-col gap-2 rounded-lg border border-line bg-panel p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+              className="group flex flex-col gap-2 rounded-lg border border-line bg-panel p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gold hover:shadow-md"
             >
               <div className="flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy text-gold ring-2 ring-gold/40 transition group-hover:bg-gold group-hover:text-navy">
                   <Icon name={s.icon} size={19} />
                 </span>
                 <span className="font-mono text-xs text-panel-muted">0{i + 1}</span>

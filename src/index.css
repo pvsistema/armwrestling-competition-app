@@ -4,59 +4,66 @@
 
 @layer base {
   :root {
-    /* Светлая тема в цветах триколора: белый фон, спокойный синий, сдержанный красный */
-    --cream: 216 33% 94%;
-    --background: 210 40% 98%;
-    --foreground: 222 47% 16%;
+    /* Цвета логотипа ФАР: глубокий синий ободок, золото, медно-красный + триколор */
+    --cream: 224 52% 16%;
+    --background: 40 33% 96%;
+    --foreground: 224 45% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 16%;
+    --card: 40 40% 99%;
+    --card-foreground: 224 45% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 16%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 224 45% 15%;
 
-    --primary: 220 70% 40%;
+    --primary: 222 62% 30%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 40% 94%;
-    --secondary-foreground: 222 47% 16%;
+    --secondary: 40 32% 92%;
+    --secondary-foreground: 224 45% 15%;
 
-    --muted: 214 35% 95%;
-    --muted-foreground: 218 15% 40%;
+    --muted: 40 30% 93%;
+    --muted-foreground: 222 15% 38%;
 
-    --accent: 214 50% 93%;
-    --accent-foreground: 222 47% 16%;
+    --accent: 43 70% 90%;
+    --accent-foreground: 224 45% 15%;
 
     --destructive: 354 68% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 25% 86%;
-    --input: 214 25% 84%;
-    --ring: 220 70% 45%;
+    --border: 38 24% 82%;
+    --input: 38 24% 80%;
+    --ring: 43 70% 48%;
 
     --radius: 22px;
 
-    --frame: 215 45% 89%;
-    --panel: 0 0% 100%;
-    --surface: 214 40% 97%;
-    --line: 214 25% 87%;
-    --panel-muted: 218 15% 40%;
-    --tip: 214 85% 93%;
-    --tip-foreground: 222 60% 20%;
+    --navy: 224 55% 17%;
+    --navy-2: 220 60% 26%;
+    --gold: 43 62% 52%;
+    --gold-soft: 43 70% 88%;
+    --gold-foreground: 224 55% 14%;
+    --copper: 12 62% 40%;
+
+    --frame: 222 32% 86%;
+    --panel: 40 40% 99%;
+    --surface: 40 35% 94.5%;
+    --line: 38 24% 84%;
+    --panel-muted: 222 15% 38%;
+    --tip: 43 75% 89%;
+    --tip-foreground: 30 55% 18%;
     --corner-red: 354 68% 45%;
     --corner-blue: 220 70% 42%;
     --flag-white: 0 0% 100%;
     --flag-blue: 220 70% 40%;
     --flag-red: 354 68% 47%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 16%;
-    --sidebar-primary: 220 70% 40%;
+    --sidebar-background: 40 40% 99%;
+    --sidebar-foreground: 224 45% 15%;
+    --sidebar-primary: 222 62% 30%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 40% 94%;
-    --sidebar-accent-foreground: 222 47% 16%;
-    --sidebar-border: 214 25% 87%;
-    --sidebar-ring: 220 70% 45%;
+    --sidebar-accent: 43 70% 90%;
+    --sidebar-accent-foreground: 224 45% 15%;
+    --sidebar-border: 38 24% 84%;
+    --sidebar-ring: 43 70% 48%;
   }
 }
 
@@ -72,6 +79,10 @@
   body {
     @apply bg-cream text-foreground font-sans;
     font-size: 15px;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, hsl(var(--navy-2)) 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 110%, hsl(var(--copper) / 0.35) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 
   input[type="number"]::-webkit-inner-spin-button,
@@ -86,10 +97,24 @@
     @apply inline-flex items-center gap-2 rounded-full border border-line bg-panel px-[18px] py-[10px] text-[0.93em] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent;
   }
   .pill-on {
-    @apply border-primary bg-primary text-primary-foreground hover:bg-primary hover:border-primary;
+    @apply border-primary bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--gold))] hover:bg-primary hover:border-primary;
   }
   .btn-blue {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground shadow-[0_2px_10px_hsl(var(--primary)/0.3),inset_0_-2px_0_hsl(var(--gold)/0.9)] transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold px-5 py-3 font-semibold text-gold-foreground shadow-[0_2px_12px_hsl(var(--gold)/0.4)] transition-all hover:brightness-105 active:scale-[0.98];
+  }
+  .navy-band {
+    background:
+      radial-gradient(600px 200px at 0% 0%, hsl(var(--navy-2)) 0%, transparent 70%),
+      linear-gradient(180deg, hsl(var(--navy)) 0%, hsl(224 55% 20%) 100%);
+  }
+  .gold-text {
+    background: linear-gradient(180deg, hsl(45 85% 72%) 0%, hsl(var(--gold)) 45%, hsl(36 60% 38%) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .win {
     @apply flex flex-col overflow-hidden rounded-[6px] border border-line bg-panel text-foreground shadow-[0_1px_3px_rgba(20,40,90,0.06)];
@@ -105,16 +130,16 @@
     box-shadow: inset 0 0 0 1px hsl(var(--line));
   }
   .win-bar {
-    @apply flex h-[30px] shrink-0 items-center gap-1.5 border-b border-line bg-surface px-3;
+    @apply flex h-[30px] shrink-0 items-center gap-1.5 border-b-2 border-gold/60 bg-surface px-3;
   }
   .win-bar i {
-    @apply block h-[9px] w-[9px] rounded-full bg-line;
+    @apply block h-[9px] w-[9px] rounded-full bg-gold/50;
   }
   .win-bar b {
     @apply mx-auto font-mono text-[0.8em] font-normal text-panel-muted;
   }
   .cat {
-    @apply font-mono text-[0.8em] text-panel-muted;
+    @apply font-mono text-[0.8em] text-[hsl(36_45%_36%)];
   }
   .field {
     @apply h-11 w-full rounded-[14px] border border-line bg-surface px-4 text-foreground outline-none transition-colors placeholder:text-panel-muted focus:border-primary;

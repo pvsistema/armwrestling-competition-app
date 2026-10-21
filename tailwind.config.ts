@@ -24,6 +24,13 @@ export default {
 			},
 			colors: {
 				cream: 'hsl(var(--cream))',
+				navy: 'hsl(var(--navy))',
+				copper: 'hsl(var(--copper))',
+				gold: {
+					DEFAULT: 'hsl(var(--gold))',
+					soft: 'hsl(var(--gold-soft))',
+					foreground: 'hsl(var(--gold-foreground))'
+				},
 				frame: 'hsl(var(--frame))',
 				panel: {
 					DEFAULT: 'hsl(var(--panel))',

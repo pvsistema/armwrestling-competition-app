@@ -29,7 +29,7 @@ function Shell() {
   const right = (
     <>
       {section === "judge" && (
-        <div className="flex rounded-full border border-line bg-surface p-1">
+        <div className="flex rounded-full border border-line bg-surface p-1 text-foreground">
           {tables.map((t) => (
             <button
               key={String(t)}
@@ -55,8 +55,10 @@ function Shell() {
   return (
     <div className="min-h-screen p-2 pb-1 sm:px-3 print:bg-white print:p-0">
       <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 overflow-hidden rounded-stage border border-line bg-background px-4 pb-7 pt-0 text-foreground shadow-sm sm:px-10 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
-        <div className="tricolor -mx-4 mb-1 sm:-mx-10 print:hidden" />
-        <AppHeader section={section} onSection={setSection} right={right} />
+        <div className="navy-band -mx-4 border-b-2 border-gold/70 px-4 pb-3 text-white sm:-mx-10 sm:px-10 print:hidden">
+          <div className="tricolor -mx-4 mb-3 sm:-mx-10" />
+          <AppHeader section={section} onSection={setSection} right={right} />
+        </div>
         <main className="flex flex-1 flex-col gap-4">
           <PrintFooter />
           <RestoreBackup />
@@ -85,7 +87,7 @@ function Shell() {
           )}
         </main>
       </div>
-      <footer className="flex justify-end px-3 pt-1 text-xs font-semibold text-foreground/85 print:hidden">
+      <footer className="flex justify-end px-3 pt-1 text-xs font-semibold text-gold print:hidden">
         Разработал: Ипатов Сергей Геннадьевич
       </footer>
     </div>

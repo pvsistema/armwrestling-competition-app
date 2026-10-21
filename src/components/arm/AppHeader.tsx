@@ -29,7 +29,7 @@ export default function AppHeader({ section, onSection, right }: Props) {
   return (
     <header className="relative flex items-center gap-7 print:hidden">
       <div className="flex cursor-pointer items-center gap-3" onClick={() => onSection("home")} title="На главную">
-        {showLogo && <Logo className="h-11 w-11 shadow-md" />}
+        {showLogo && <Logo className="h-12 w-12 shadow-[0_0_0_2px_hsl(var(--gold)),0_4px_14px_rgba(0,0,0,0.4)]" />}
         <div className="flex flex-col items-center text-center text-[0.9em] font-semibold leading-[1.15]">
           <span>Федерация</span>
           <span>Армрестлинга</span>
@@ -43,23 +43,23 @@ export default function AppHeader({ section, onSection, right }: Props) {
             onClick={() => onSection(s.id)}
             className={cn(
               "relative py-1 transition-opacity",
-              section === s.id ? "opacity-100" : "opacity-75 hover:opacity-100",
+              section === s.id ? "text-gold opacity-100" : "text-white opacity-80 hover:opacity-100",
             )}
           >
             {s.label}
             {section === s.id && (
-              <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-corner-red" />
+              <span className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full bg-gold" />
             )}
           </button>
         ))}
       </nav>
-      <div className="ml-auto hidden items-center gap-2.5 md:flex">{right}</div>
+      <div className="ml-auto hidden items-center gap-2.5 text-foreground md:flex">{right}</div>
       <button className="pill ml-auto md:ml-0 lg:hidden" onClick={() => setOpen((o) => !o)} aria-label="Меню">
         <Icon name={open ? "X" : "Menu"} size={18} />
         <span>{SECTIONS.find((s) => s.id === section)?.label}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-64 animate-scale-in rounded-lg border border-line bg-panel p-2 shadow-2xl lg:hidden">
+        <div className="absolute right-0 top-full z-40 mt-2 w-64 animate-scale-in rounded-lg border border-line bg-panel p-2 text-foreground shadow-2xl lg:hidden">
           {SECTIONS.map((s) => (
             <button
               key={s.id}
