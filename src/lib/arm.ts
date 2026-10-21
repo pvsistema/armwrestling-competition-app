@@ -89,6 +89,7 @@ export interface Tournament {
   requirements?: string;
   teamBestOnly?: boolean;
   judges?: Judge[];
+  showLogo?: boolean;
 }
 
 export interface Judge {

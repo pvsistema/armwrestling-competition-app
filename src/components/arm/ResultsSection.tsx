@@ -6,6 +6,7 @@ import ReweighInput from "./ReweighInput";
 import BiathlonProtocol from "./BiathlonProtocol";
 import TeamProtocol from "./TeamProtocol";
 import JudgesList from "./JudgesList";
+import Logo from "./Logo";
 import { cn } from "@/lib/utils";
 
 export default function ResultsSection() {
@@ -73,12 +74,15 @@ export default function ResultsSection() {
       </div>
 
       <div className="hidden text-center print:block">
+        {(tournament.showLogo ?? true) && <Logo hq className="float-left mr-3 h-[22mm] w-[22mm]" />}
+        {(tournament.showLogo ?? true) && <div className="float-right h-[22mm] w-[22mm]" />}
         <div className="text-xl font-bold">{tournament.name}</div>
         {tournament.ekp && <div className="text-sm">{tournament.ekp}</div>}
         <div className="text-sm">
           {tournament.place}, {dateStr}
           {dateEndStr ? ` — ${dateEndStr}` : ""}
         </div>
+        <div className="clear-both" />
         <div className="mt-2 grid grid-cols-2 gap-x-6 text-left text-[11px]">
           <div>Главный судья{tournament.chiefJudgeCat ? `, ${tournament.chiefJudgeCat}` : ""} ________ {tournament.chiefJudge}</div>
           <div>Главный секретарь{tournament.secretaryCat ? `, ${tournament.secretaryCat}` : ""} ________ {tournament.secretary}</div>

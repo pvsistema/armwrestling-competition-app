@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
+import Logo from "./Logo";
+import { useStore } from "@/lib/store";
 
 export type Section = "athletes" | "classes" | "bracket" | "judge" | "results" | "board";
 
@@ -21,9 +23,14 @@ interface Props {
 
 export default function AppHeader({ section, onSection, right }: Props) {
   const [open, setOpen] = useState(false);
+  const { tournament } = useStore();
+  const showLogo = tournament.showLogo ?? true;
   return (
     <header className="relative flex items-center gap-7 print:hidden">
-      <div className="text-[1.6em] font-semibold tracking-[-0.03em]">армспорт</div>
+      <div className="flex items-center gap-3">
+        {showLogo && <Logo className="h-11 w-11 shadow-md" />}
+        <div className="text-[1.6em] font-semibold leading-none tracking-[-0.03em]">армспорт</div>
+      </div>
       <nav className="hidden items-center gap-[22px] font-medium lg:flex">
         {SECTIONS.map((s) => (
           <button

@@ -83,6 +83,13 @@ export default function ClassesSection() {
             <L label="Зам. главного секретаря">
               <input className="field" value={tournament.deputySecretary ?? ""} onChange={(e) => setTournament({ deputySecretary: e.target.value })} placeholder="Фамилия Имя Отчество" />
             </L>
+            <button
+              type="button"
+              className={cn("pill justify-start", (tournament.showLogo ?? true) && "pill-on")}
+              onClick={() => setTournament({ showLogo: !(tournament.showLogo ?? true) })}
+            >
+              <Icon name={(tournament.showLogo ?? true) ? "SquareCheck" : "Square"} size={15} /> Эмблема ФАР в шапке, протоколах и на табло
+            </button>
             <L label="Требования для разрядов (печатается в протоколе)">
               <textarea className="field min-h-[72px] py-2" value={tournament.requirements ?? ""} onChange={(e) => setTournament({ requirements: e.target.value })} placeholder="КМС — 1 место при не менее 8 участниках в категории…" />
             </L>
