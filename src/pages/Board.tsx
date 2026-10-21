@@ -6,7 +6,7 @@ import BoardView from "@/components/arm/BoardView";
 function BoardScreen() {
   const [focus, setFocus] = useBoardFocus();
   useEffect(() => {
-    document.title = "Табло — Армспорт";
+    document.title = "Табло — Рукоборец";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А" || e.key === "F11") {
         e.preventDefault();

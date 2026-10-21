@@ -11,16 +11,6 @@ import { TimerBoard } from "./RestTimer";
 import { useTimers } from "@/lib/timers";
 import { callLeft } from "@/lib/queue";
 
-const GRID: Record<number, string> = {
-  1: "grid-cols-1",
-  2: "grid-cols-1 md:grid-cols-2",
-  3: "grid-cols-1 md:grid-cols-3",
-  4: "grid-cols-1 md:grid-cols-2 md:grid-rows-2",
-  5: "grid-cols-1 md:grid-cols-3 md:grid-rows-2",
-  6: "grid-cols-1 md:grid-cols-3 md:grid-rows-2",
-  7: "grid-cols-1 md:grid-cols-4 md:grid-rows-2",
-  8: "grid-cols-1 md:grid-cols-4 md:grid-rows-2",
-};
 
 interface Props {
   focus: BoardFocus;
@@ -159,9 +149,12 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
       {focusTable === "all" && tables > 1 && globalBreak(matches, tournament) && !lastOf("all").some((m) => fresh(m)) ? (
         <HandBreak first={stage.first} second={stage.second} size="hero" />
       ) : focusTable === "all" && tables > 1 ? (
-        <div className={cn("grid min-h-0 flex-1 gap-3 md:gap-4", GRID[tables] ?? "grid-cols-1 md:grid-cols-4")}>
+        <div
+          className="flex min-h-0 flex-1 flex-col gap-3 md:grid md:gap-3"
+          style={{ gridTemplateColumns: `repeat(${tables}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: tables }, (_, i) => i + 1).map((t) => (
-            tableCard(t, () => onFocus(t), tables > 4)
+            tableCard(t, () => onFocus(t), tables > 3)
           ))}
         </div>
       ) : (
@@ -173,8 +166,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   function tableCard(table: number, onOpen: () => void, compact: boolean) {
     const q = pendingQueue(matches, table, tournament);
     const cur = q[0];
-    const next = q.slice(1, compact ? 3 : 4);
+    const next = q.slice(1, compact ? 5 : 6);
     const last = lastOf(table)[0];
+    const nameSize: "sm" | "md" | "lg" = tables <= 2 ? "lg" : tables <= 4 ? "md" : "sm";
     const resting = !!timers.get(table);
     const onBreak = stage.flow !== "free" && tableBreak(matches, table, tournament) && !cur?.calledAt;
     const showAll = fresh(last) || onBreak;
@@ -185,10 +179,14 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         className="group flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel text-left shadow-sm transition hover:border-primary hover:shadow-md"
         title={`Показать стол ${table} на всё табло`}
       >
-        <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2">
-          <span className="rounded-full bg-primary px-3 py-0.5 text-sm font-semibold text-primary-foreground md:text-base">Стол {table}</span>
-          <span className="truncate text-xs text-panel-muted md:text-sm">{cur ? `${label(cur.key)} · ${GROUP_LABEL[cur.group]}` : ""}</span>
-          <Icon name="Maximize2" size={16} className="ml-auto shrink-0 text-panel-muted opacity-0 transition group-hover:opacity-100" />
+        <div className="flex flex-col gap-1 border-b border-line bg-surface px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-primary px-3 py-0.5 text-sm font-semibold text-primary-foreground md:text-base">Стол {table}</span>
+            <Icon name="Maximize2" size={16} className="ml-auto shrink-0 text-panel-muted opacity-0 transition group-hover:opacity-100" />
+          </div>
+          <span className="line-clamp-2 min-h-[2.5em] text-xs leading-tight text-panel-muted md:text-sm">
+            {cur ? `${label(cur.key)} · ${GROUP_LABEL[cur.group]}` : ""}
+          </span>
         </div>
         {resting ? (
           <div className="flex flex-1 flex-col gap-2 p-3">
@@ -206,11 +204,11 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         ) : onBreak ? (
           <HandBreak first={stage.first} second={stage.second} table={table} size="card" />
         ) : cur ? (
-          <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
+          <div className="flex flex-1 flex-col justify-center gap-2 px-3 py-3 md:px-4">
             {callBadge(cur, false)}
-            {name(cur.a, "blue", compact ? "md" : "lg", cur)}
+            {name(cur.a, "blue", nameSize, cur)}
             <div className="pl-1 font-mono text-xs text-panel-muted md:text-sm">против</div>
-            {name(cur.b, "red", compact ? "md" : "lg", cur)}
+            {name(cur.b, "red", nameSize, cur)}
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center p-4 text-center text-lg text-panel-muted">
@@ -219,10 +217,10 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
               : "Схваток нет"}
           </div>
         )}
-        <div className="border-t border-line bg-surface/60 px-4 py-2.5">
+        <div className="border-t border-line bg-surface/60 px-3 py-2.5">
           <div className="mb-1 font-mono text-xs text-panel-muted">СЛЕДУЮЩИЕ ПАРЫ</div>
           {(showAll ? q.slice(0, next.length + 1) : next).map((m, i) => (
-            <div key={m.id} className="flex items-baseline gap-2 text-base md:text-lg">
+            <div key={m.id} className={cn("flex items-baseline gap-2", tables >= 5 ? "text-sm md:text-base" : "text-base md:text-lg")}>
               <span className="w-5 shrink-0 font-mono text-xs text-panel-muted">{i + (showAll ? 1 : 2)}.</span>
               <span className="truncate font-medium">
                 {surname(amap[m.a]?.name ?? "")} — {surname(amap[m.b]?.name ?? "")}
@@ -243,15 +241,20 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     );
   }
 
-  function name(id: string, corner: "blue" | "red", size: "md" | "lg", m?: Match) {
+  function name(id: string, corner: "blue" | "red", size: "sm" | "md" | "lg", m?: Match) {
     const a = amap[id];
     return (
       <div className={cn("border-l-4 pl-3", corner === "blue" ? "border-corner-blue" : "border-corner-red")}>
-        <div className={cn("font-semibold leading-tight tracking-tight", size === "lg" ? "text-[clamp(22px,2.6vw,44px)]" : "text-[clamp(18px,1.8vw,30px)]")}>
+        <div
+          className={cn(
+            "break-words font-semibold leading-tight tracking-tight",
+            size === "lg" ? "text-[clamp(22px,2.6vw,44px)]" : size === "md" ? "text-[clamp(18px,1.8vw,30px)]" : "text-[clamp(16px,1.35vw,24px)]",
+          )}
+        >
           {a?.name ?? "—"}
           {m && penDots(m, id, false)}
         </div>
-        <div className="truncate text-sm text-panel-muted md:text-base">
+        <div className={cn("text-panel-muted", size === "sm" ? "line-clamp-2 text-xs md:text-sm" : "truncate text-sm md:text-base")}>
           {fmtKg(a?.weight)} кг{a?.club ? ` · ${a.club}` : ""}
         </div>
       </div>

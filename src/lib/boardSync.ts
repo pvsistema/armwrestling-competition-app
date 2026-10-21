@@ -41,7 +41,7 @@ export async function openBoardWindow() {
     }
     new WebviewWindow("board", {
       url: "index.html?board=1",
-      title: "Табло — Армспорт",
+      title: "Табло — Рукоборец",
       width: 1600,
       height: 900,
       center: true,
