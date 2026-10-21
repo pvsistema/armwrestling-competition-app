@@ -132,6 +132,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [s]);
 
+  useEffect(() => {
+    const on = (e: StorageEvent) => {
+      if (e.key !== KEY || !e.newValue) return;
+      try {
+        setS(JSON.parse(e.newValue) as State);
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("storage", on);
+    return () => window.removeEventListener("storage", on);
+  }, []);
+
   const amap = useMemo(() => Object.fromEntries(s.athletes.map((a) => [a.id, a])), [s.athletes]);
 
   const addAthlete = useCallback(
