@@ -17,7 +17,7 @@ import {
   weightClasses,
   HAND_ORDER,
 } from "./arm";
-import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
+import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEFAULT_GROUPS, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
 
 export interface State {
   tournament: Tournament;
@@ -144,6 +144,8 @@ function initial(): State {
             place: t.place === L.place ? "" : t.place,
           },
         };
+      const sig = (g: AgeGroup[]) => JSON.stringify(g.map((x) => [x.id, x.name, x.gender, x.ageMin, x.ageMax, x.limits]));
+      if (!st.athletes.length && !st.brackets.length && sig(st.groups) === sig(LEGACY_DEFAULT_GROUPS)) st = { ...st, groups: [] };
       const onlyDemo = st.athletes.length > 0 && st.athletes.every((a) => LEGACY_DEMO_NAMES.has(a.name));
       if (onlyDemo) return { ...st, athletes: [], brackets: [], matches: [], order: 1 };
       return st;

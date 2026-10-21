@@ -1,6 +1,8 @@
 import { AgeGroup, Tournament } from "./arm";
 
-export const DEFAULT_GROUPS: AgeGroup[] = [
+export const DEFAULT_GROUPS: AgeGroup[] = [];
+
+export const LEGACY_DEFAULT_GROUPS: AgeGroup[] = [
   { id: "m-sen", name: "Мужчины", gender: "M", ageMin: 18, ageMax: 39, limits: [60, 70, 80, 90, 100] },
   { id: "w-sen", name: "Женщины", gender: "F", ageMin: 18, ageMax: 39, limits: [55, 60, 70] },
   { id: "m-jun", name: "Юниоры", gender: "M", ageMin: 14, ageMax: 17, limits: [60, 70] },

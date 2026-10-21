@@ -128,6 +128,11 @@ export default function ClassesSection() {
             Весовые категории в наборах — типовые по правилам ФАР, проверьте их по положению вашего турнира. Возраст считается по году рождения.
           </p>
         </div>
+        {!groups.length && (
+          <div className="rounded-lg border-2 border-dashed border-line px-5 py-8 text-center text-panel-muted">
+            Категорий пока нет. Выберите готовый набор выше или добавьте возрастную группу вручную.
+          </div>
+        )}
         {groups.map((g) => (
           <GroupCard key={g.id} g={g} counts={counts} onChange={(p) => update(g.id, p)} onRemove={() => setGroups(groups.filter((x) => x.id !== g.id))} />
         ))}
