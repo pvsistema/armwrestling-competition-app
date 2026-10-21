@@ -7,6 +7,7 @@ import BiathlonProtocol from "./BiathlonProtocol";
 import TeamProtocol from "./TeamProtocol";
 import JudgesList from "./JudgesList";
 import Logo from "./Logo";
+import ExportButtons from "./ExportButtons";
 import { cn } from "@/lib/utils";
 
 export default function ResultsSection() {
@@ -71,6 +72,13 @@ export default function ResultsSection() {
         <button className="btn-blue" onClick={() => window.print()}>
           <Icon name="Printer" size={17} /> Печать
         </button>
+      </div>
+
+      <div className="win flex-row flex-wrap items-center gap-3 px-4 py-3 print:hidden">
+        <ExportButtons onlyDone={onlyDone} />
+        <span className="text-xs text-panel-muted">
+          Весь протокол целиком, как в образце ФАР: шапка, итоги по категориям, командный зачёт, судейская коллегия. Альбомный A4.
+        </span>
       </div>
 
       <div className="hidden text-center print:block">
