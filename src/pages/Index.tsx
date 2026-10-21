@@ -8,6 +8,7 @@ import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
+import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
 import HandDoneDialog from "@/components/arm/HandDoneDialog";
 import ImportAthletes from "@/components/arm/ImportAthletes";
 import StallAlert from "@/components/arm/StallAlert";
@@ -40,6 +41,7 @@ function Shell() {
           ))}
         </div>
       )}
+      <AutoBackupBadge />
       <HelpSheet />
       <button className="pill" onClick={() => setSection("results")}>
         <Icon name="Printer" size={16} /> Печать

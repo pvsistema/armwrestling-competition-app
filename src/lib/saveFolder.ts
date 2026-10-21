@@ -142,3 +142,30 @@ export async function saveFile(blob: Blob, name: string, sub?: string): Promise<
 }
 
 export const savedText = (s: Saved) => (s.where === "folder" ? `Папка: ${s.path}` : `Загрузки: ${s.path}`);
+
+/** Есть ли доступ к папке без вопроса пользователю (для фонового сохранения). */
+export async function folderReady(): Promise<"none" | "ask" | "ok"> {
+  const h = await getFolder();
+  if (!h) return "none";
+  if (!h.queryPermission) return "ok";
+  return (await h.queryPermission({ mode: "readwrite" })) === "granted" ? "ok" : "ask";
+}
+
+/** Тихое сохранение: только в папку, без «Загрузок» и без вопросов. */
+export async function saveQuiet(blob: Blob, name: string, sub: string, keep?: { prefix: string; count: number }) {
+  const h = await getFolder();
+  if (!h || (await folderReady()) !== "ok") return null;
+  const dir = await h.getDirectoryHandle(sub, { create: true });
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await (fh as FileSystemFileHandle & { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+  await w.write(blob);
+  await w.close();
+  if (keep) {
+    const names: string[] = [];
+    for await (const [n] of (dir as unknown as { entries: () => AsyncIterable<[string, unknown]> }).entries())
+      if (n.startsWith(keep.prefix)) names.push(n);
+    names.sort();
+    for (const n of names.slice(0, Math.max(0, names.length - keep.count))) await dir.removeEntry(n).catch(() => undefined);
+  }
+  return [h.name, sub, name].join(" / ");
+}
