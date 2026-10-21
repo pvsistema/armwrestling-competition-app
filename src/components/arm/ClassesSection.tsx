@@ -34,7 +34,7 @@ export default function ClassesSection() {
           </div>
           <div className="flex flex-col gap-3 p-5">
             <L label="Название">
-              <input className="field" value={tournament.name} onChange={(e) => setTournament({ name: e.target.value })} />
+              <input className="field" value={tournament.name} onChange={(e) => setTournament({ name: e.target.value })} placeholder="Первенство области по армрестлингу" />
             </L>
             <div className="grid grid-cols-2 gap-3">
               <L label="Дата">
@@ -53,7 +53,7 @@ export default function ClassesSection() {
               </L>
             </div>
             <L label="Место проведения">
-              <input className="field" value={tournament.place} onChange={(e) => setTournament({ place: e.target.value })} />
+              <input className="field" value={tournament.place} onChange={(e) => setTournament({ place: e.target.value })} placeholder="г. Орёл, СК «Олимп»" />
             </L>
             <L label="Дата окончания (если турнир несколько дней)">
               <input type="date" className="field" value={tournament.dateEnd ?? ""} onChange={(e) => setTournament({ dateEnd: e.target.value })} />
@@ -98,7 +98,7 @@ export default function ClassesSection() {
         <ScoringCard />
         <div className="rounded-lg bg-tip p-4 text-sm leading-relaxed text-tip-foreground">
           <div className="mb-1 font-semibold">Как считается возраст</div>
-          Возраст = год турнира ({year}) минус год рождения. Вес сравнивается с верхней границей: 80,0 кг — ещё «до 80».
+          Возраст = год турнира ({year}{tournament.date ? "" : ", пока не указана дата — текущий год"}) минус год рождения. Вес сравнивается с верхней границей: 80,0 кг — ещё «до 80».
         </div>
       </div>
 

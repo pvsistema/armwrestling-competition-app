@@ -76,10 +76,10 @@ export default function ResultsSection() {
       <div className="hidden text-center print:block">
         {(tournament.showLogo ?? true) && <Logo hq className="float-left mr-3 h-[22mm] w-[22mm]" />}
         {(tournament.showLogo ?? true) && <div className="float-right h-[22mm] w-[22mm]" />}
-        <div className="text-xl font-bold">{tournament.name}</div>
+        <div className="text-xl font-bold">{tournament.name || "Соревнования по армрестлингу"}</div>
         {tournament.ekp && <div className="text-sm">{tournament.ekp}</div>}
         <div className="text-sm">
-          {tournament.place}, {dateStr}
+          {[tournament.place, dateStr].filter(Boolean).join(", ")}
           {dateEndStr ? ` — ${dateEndStr}` : ""}
         </div>
         <div className="clear-both" />

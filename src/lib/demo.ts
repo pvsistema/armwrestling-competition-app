@@ -8,9 +8,9 @@ export const DEFAULT_GROUPS: AgeGroup[] = [
 ];
 
 export const DEFAULT_TOURNAMENT: Tournament = {
-  name: "Открытый турнир по армрестлингу",
-  date: "2026-10-24",
-  place: "Спортивный зал",
+  name: "",
+  date: "",
+  place: "",
   tables: 2,
   chiefJudge: "",
   secretary: "",
@@ -36,3 +36,5 @@ export const LEGACY_DEMO_NAMES = new Set<string>([
   "Ильина Вера",
   "Смирнов Егор",
 ]);
+
+export const LEGACY_DEMO_TOURNAMENT = { name: "Открытый турнир по армрестлингу", date: "2026-10-24", place: "Спортивный зал" };

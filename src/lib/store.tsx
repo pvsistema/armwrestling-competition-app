@@ -12,7 +12,7 @@ import {
   tournamentYear,
   weightClasses,
 } from "./arm";
-import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEMO_NAMES } from "./demo";
+import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
 
 export interface State {
   tournament: Tournament;
@@ -66,7 +66,19 @@ function initial(): State {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const st = JSON.parse(raw) as State;
+      let st = JSON.parse(raw) as State;
+      const L = LEGACY_DEMO_TOURNAMENT;
+      const t = st.tournament;
+      if (t.name === L.name || t.date === L.date || t.place === L.place)
+        st = {
+          ...st,
+          tournament: {
+            ...t,
+            name: t.name === L.name ? "" : t.name,
+            date: t.date === L.date ? "" : t.date,
+            place: t.place === L.place ? "" : t.place,
+          },
+        };
       const onlyDemo = st.athletes.length > 0 && st.athletes.every((a) => LEGACY_DEMO_NAMES.has(a.name));
       if (onlyDemo) return { ...st, athletes: [], brackets: [], matches: [], order: 1 };
       return st;

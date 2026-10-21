@@ -58,7 +58,7 @@ export default function BoardSection() {
       <div ref={ref} className="flex flex-1 flex-col gap-4 rounded-stage bg-panel p-6 text-foreground md:p-10">
         <div className="flex items-center gap-4">
           {(tournament.showLogo ?? true) && <Logo hq className="h-14 w-14 shadow-lg md:h-24 md:w-24" />}
-          <div className="text-xl font-semibold tracking-tight md:text-3xl">{tournament.name}</div>
+          <div className="text-xl font-semibold tracking-tight md:text-3xl">{tournament.name || "Соревнования по армрестлингу"}</div>
           <div className="ml-auto font-mono text-xl text-panel-muted md:text-3xl">
             {now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
           </div>
