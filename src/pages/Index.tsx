@@ -52,7 +52,7 @@ function Shell() {
   );
 
   return (
-    <div className="min-h-screen p-2 pb-6 sm:px-3 print:bg-white print:p-0">
+    <div className="min-h-screen p-2 pb-1 sm:px-3 print:bg-white print:p-0">
       <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 overflow-hidden rounded-stage border border-line bg-background px-4 pb-7 pt-0 text-foreground shadow-sm sm:px-10 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
         <div className="tricolor -mx-4 mb-1 sm:-mx-10 print:hidden" />
         <AppHeader section={section} onSection={setSection} right={right} />
@@ -82,10 +82,10 @@ function Shell() {
             </div>
           )}
         </main>
-        <footer className="-mb-3 mt-2 border-t border-line pt-4 text-center text-sm text-panel-muted print:hidden">
-          Разработал: <span className="font-medium text-foreground">Ипатов Сергей Геннадьевич</span>
-        </footer>
       </div>
+      <footer className="flex justify-end px-3 pt-1 text-xs font-semibold text-foreground/85 print:hidden">
+        Разработал: Ипатов Сергей Геннадьевич
+      </footer>
     </div>
   );
 }
