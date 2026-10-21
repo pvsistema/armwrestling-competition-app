@@ -37,7 +37,7 @@ export function TimerControls({ table }: { table: number }) {
 }
 
 /** Крупный таймер на табло. size: "lg" — на весь стол, "md" — в клетке стола. */
-export function TimerBoard({ table, size = "lg", sound = false }: { table: number; size?: "lg" | "md"; sound?: boolean }) {
+export function TimerBoard({ table, size = "lg", sound = false }: { table: number; size?: "lg" | "md" | "hero" | "heroSm"; sound?: boolean }) {
   const { get } = useTimers();
   const t = get(table);
   const beeped = useRef<number | null>(null);
@@ -50,6 +50,35 @@ export function TimerBoard({ table, size = "lg", sound = false }: { table: numbe
   }, [sound, t]);
   if (!t) return null;
   const warn = t.done || t.left <= 10;
+  if (size === "hero" || size === "heroSm") {
+    const big = size === "hero";
+    return (
+      <div
+        className={cn(
+          "flex flex-1 animate-scale-in flex-col items-center justify-center gap-3 rounded-lg border-4 p-4 text-center",
+          warn ? "border-corner-red bg-corner-red/10" : "border-primary bg-primary/5",
+          t.done && "animate-pulse",
+        )}
+      >
+        <div className={cn("flex items-center gap-2 font-mono uppercase", warn ? "text-corner-red" : "text-primary", big ? "text-xl md:text-3xl" : "text-sm md:text-lg")}>
+          <Icon name="Timer" size={big ? 36 : 22} />
+          {t.done ? "Время отдыха вышло" : `Отдых ${t.seconds === 30 ? "30 секунд" : "2 минуты"}`}
+        </div>
+        <div
+          className={cn(
+            "font-mono font-bold tabular-nums leading-none tracking-tight",
+            warn ? "text-corner-red" : "text-foreground",
+            big ? "text-[clamp(120px,22vw,340px)]" : "text-[clamp(64px,9vw,170px)]",
+          )}
+        >
+          {fmtSec(t.left)}
+        </div>
+        <div className={cn("w-full max-w-3xl overflow-hidden rounded-full bg-line", big ? "h-4" : "h-2.5")}>
+          <div className={cn("h-full rounded-full transition-[width] duration-200", warn ? "bg-corner-red" : "bg-primary")} style={{ width: `${(1 - t.progress) * 100}%` }} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className={cn(

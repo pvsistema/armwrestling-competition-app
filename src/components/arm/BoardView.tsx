@@ -7,6 +7,7 @@ import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { TimerBoard } from "./RestTimer";
+import { useTimers } from "@/lib/timers";
 
 const GRID: Record<number, string> = {
   1: "grid-cols-1",
@@ -38,6 +39,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     return () => clearInterval(t);
   }, []);
 
+  const timers = useTimers();
   type DM = Match & { decidedAt?: number };
   const lastOf = (t: number | "all") =>
     (matches as DM[])
@@ -119,6 +121,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     const cur = q[0];
     const next = q.slice(1, compact ? 3 : 4);
     const last = lastOf(table)[0];
+    const resting = !!timers.get(table);
     return (
       <button
         key={table}
@@ -131,10 +134,18 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           <span className="truncate text-xs text-panel-muted md:text-sm">{cur ? `${label(cur.key)} · ${GROUP_LABEL[cur.group]}` : ""}</span>
           <Icon name="Maximize2" size={16} className="ml-auto shrink-0 text-panel-muted opacity-0 transition group-hover:opacity-100" />
         </div>
-        <div className="px-3 pt-2 empty:hidden">
-          <TimerBoard table={table} size="md" sound={!!standalone} />
-        </div>
-        {fresh(last) ? (
+        {resting ? (
+          <div className="flex flex-1 flex-col gap-2 p-3">
+            <TimerBoard table={table} size="heroSm" sound={!!standalone} />
+            {cur && (
+              <div className="text-center text-base md:text-lg">
+                <span className="mr-2 font-mono text-xs text-panel-muted">ПАРА</span>
+                <span className="font-medium text-corner-blue">{surname(amap[cur.a]?.name ?? "")}</span> —{" "}
+                <span className="font-medium text-corner-red">{surname(amap[cur.b]?.name ?? "")}</span>
+              </div>
+            )}
+          </div>
+        ) : fresh(last) ? (
           <div className="flex flex-1 p-3">{winnerBanner(last, false)}</div>
         ) : cur ? (
           <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
@@ -196,8 +207,18 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
       .slice(0, 4);
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <TimerBoard table={single ? (current?.table ?? 1) : table} size="lg" sound={!!standalone} />
-        {showWin ? (
+        {timers.get(single ? (current?.table ?? 1) : table) ? (
+          <div className="flex flex-1 flex-col gap-3">
+            <TimerBoard table={single ? (current?.table ?? 1) : table} size="hero" sound={!!standalone} />
+            {current && (
+              <div className="text-center text-2xl md:text-4xl">
+                <span className="font-semibold text-corner-blue">{amap[current.a]?.name}</span>
+                <span className="mx-4 font-mono text-lg text-panel-muted">против</span>
+                <span className="font-semibold text-corner-red">{amap[current.b]?.name}</span>
+              </div>
+            )}
+          </div>
+        ) : showWin ? (
           winnerBanner(lastOne, true)
         ) : current ? (
           <div className="flex flex-1 flex-col justify-center rounded-lg border border-line bg-frame p-3">
