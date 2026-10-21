@@ -26,41 +26,20 @@ export function useBoardFocus(): [BoardFocus, (v: BoardFocus) => void] {
   return [v, set];
 }
 
-const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
 export const isBoardWindow = () => new URLSearchParams(window.location.search).has("board");
 
+/** Запущено в настольной программе (оболочка C# / WebView2). */
+export const isDesktop = () => typeof navigator !== "undefined" && navigator.userAgent.includes("ArmsportDesktop");
+
 export async function openBoardWindow() {
-  if (isTauri()) {
-    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-    const ex = await WebviewWindow.getByLabel("board");
-    if (ex) {
-      await ex.unminimize().catch(() => {});
-      await ex.setFocus();
-      return;
-    }
-    new WebviewWindow("board", {
-      url: "index.html?board=1",
-      title: "Табло — Рукоборец",
-      width: 1600,
-      height: 900,
-      center: true,
-    });
-    return;
-  }
   const url = `${window.location.origin}${import.meta.env.BASE_URL}?board=1`;
   const w = window.open(url, "armsport-board", "popup=yes,width=1600,height=900");
+  if (isDesktop()) return;
   if (!w) throw new Error("Браузер заблокировал новое окно — разрешите всплывающие окна для этого сайта.");
   w.focus();
 }
 
 export async function toggleFullscreen() {
-  if (isTauri()) {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    const w = getCurrentWindow();
-    await w.setFullscreen(!(await w.isFullscreen()));
-    return;
-  }
   if (document.fullscreenElement) await document.exitFullscreen();
   else await document.documentElement.requestFullscreen?.();
 }

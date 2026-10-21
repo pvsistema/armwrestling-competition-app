@@ -1,30 +1,35 @@
 @echo off
 chcp 65001 >nul
 REM =============================================================================
-REM Армспорт Desktop — скрипт сборки (Windows)
+REM Армспорт Desktop — сборка на C# (.NET 8 + WebView2), Windows
 REM =============================================================================
 REM Требования:
-REM   - Node.js LTS    (https://nodejs.org)  или  bun (https://bun.sh)
-REM   - Rust + cargo   (https://rustup.rs)
-REM   - tauri-cli:     cargo install tauri-cli --version "^2" --locked
-REM   - Visual Studio Build Tools, компонент "Desktop development with C++"
-REM Python-сервер не нужен: программа работает полностью офлайн,
-REM данные турнира хранятся локально на компьютере.
+REM   - .NET 8 SDK      https://dotnet.microsoft.com/download/dotnet/8.0
+REM   - Node.js LTS     https://nodejs.org   (или bun)
+REM Visual Studio, Rust и C++ НЕ нужны.
+REM Проект можно открыть и в Visual Studio: desktop\Armsport\Armsport.csproj
 REM =============================================================================
 setlocal enabledelayedexpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "ROOT_DIR=%SCRIPT_DIR%.."
-set "TAURI_DIR=%SCRIPT_DIR%tauri"
+set "APP_DIR=%SCRIPT_DIR%Armsport"
+set "OUT_DIR=%SCRIPT_DIR%release\Armsport"
 
 echo.
 echo ============================================
-echo   Армспорт Desktop — сборка (Windows)
+echo   Армспорт Desktop — сборка (C# / .NET 8)
 echo ============================================
 echo.
 
-REM ── Шаг 0: Проверка инструментов ────────────────────────────────────────────
+REM ── Шаг 0: Проверка программ ────────────────────────────────────────────────
 echo [0/4] Проверка установленных программ...
+
+where dotnet >nul 2>nul
+if errorlevel 1 goto :no_dotnet
+dotnet --list-sdks | findstr /b "8. 9. 10." >nul
+if errorlevel 1 goto :no_dotnet
+echo   OK: .NET SDK
 
 set "PM="
 where bun >nul 2>nul && set "PM=bun"
@@ -32,23 +37,11 @@ if not defined PM (
   where npm >nul 2>nul && set "PM=npm"
 )
 if not defined PM goto :no_node
-echo   OK: менеджер пакетов — !PM!
+echo   OK: !PM!
 
-where cargo >nul 2>nul
-if errorlevel 1 goto :no_rust
-echo   OK: Rust / cargo
-
-cargo tauri --version >nul 2>nul
-if errorlevel 1 (
-  echo   tauri-cli не найден — устанавливаю, это займёт 5-15 минут...
-  cargo install tauri-cli --version "^2" --locked
-  if errorlevel 1 goto :error
-)
-echo   OK: tauri-cli
-
-REM ── Шаг 1: Зависимости ───────────────────────────────────────────────────────
+REM ── Шаг 1: Зависимости интерфейса ───────────────────────────────────────────
 echo.
-echo [1/4] Установка зависимостей...
+echo [1/4] Установка зависимостей интерфейса...
 cd /d "%ROOT_DIR%"
 if "!PM!"=="bun" (
   call bun install
@@ -57,50 +50,47 @@ if "!PM!"=="bun" (
 )
 if errorlevel 1 goto :error
 
-REM ── Шаг 2: Фронтенд ─────────────────────────────────────────────────────────
+REM ── Шаг 2: Сборка интерфейса ────────────────────────────────────────────────
 echo.
 echo [2/4] Сборка интерфейса...
 call !PM! run build:desktop
 if errorlevel 1 goto :error
 echo   OK: dist-desktop\
 
-REM ── Шаг 3: Tauri ─────────────────────────────────────────────────────────────
+REM ── Шаг 3: Сборка программы C# ──────────────────────────────────────────────
 echo.
-echo [3/4] Сборка Tauri...
-cd /d "%TAURI_DIR%"
-cargo tauri build
+echo [3/4] Сборка программы C#...
+if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
+dotnet publish "%APP_DIR%\Armsport.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUT_DIR%"
 if errorlevel 1 goto :error
-echo   OK: Tauri сборка завершена
 
 REM ── Шаг 4: Итог ──────────────────────────────────────────────────────────────
 echo.
 echo [4/4] Готово!
-echo   Установщик: %TAURI_DIR%\target\release\bundle\nsis\
-echo   MSI:        %TAURI_DIR%\target\release\bundle\msi\
+echo   Программа: %OUT_DIR%\Armsport.exe
+echo   Папку Armsport можно скопировать на любой компьютер с Windows 10/11
+echo   (установка .NET на нём не нужна).
 echo.
 echo ============================================
-start "" "%TAURI_DIR%\target\release\bundle\nsis"
+start "" "%OUT_DIR%"
 pause
 exit /b 0
+
+:no_dotnet
+echo.
+echo   НЕ НАЙДЕН .NET 8 SDK.
+echo   1. Установите .NET 8 SDK (x64): https://dotnet.microsoft.com/download/dotnet/8.0
+echo   2. Закройте это окно и запустите build.bat заново.
+start "" "https://dotnet.microsoft.com/download/dotnet/8.0"
+pause
+exit /b 1
 
 :no_node
 echo.
 echo   НЕ НАЙДЕН Node.js.
-echo   1. Скачайте и установите Node.js LTS: https://nodejs.org
+echo   1. Установите Node.js LTS: https://nodejs.org
 echo   2. Закройте это окно и запустите build.bat заново.
 start "" "https://nodejs.org/ru/download"
-pause
-exit /b 1
-
-:no_rust
-echo.
-echo   НЕ НАЙДЕН Rust (cargo).
-echo   1. Установите Visual Studio Build Tools с компонентом
-echo      "Desktop development with C++":
-echo      https://visualstudio.microsoft.com/visual-cpp-build-tools/
-echo   2. Установите Rust: https://rustup.rs  (файл rustup-init.exe, вариант 1 по умолчанию)
-echo   3. Закройте это окно и запустите build.bat заново.
-start "" "https://rustup.rs"
 pause
 exit /b 1
 
