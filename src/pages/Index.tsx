@@ -7,6 +7,7 @@ import BracketSection from "@/components/arm/BracketSection";
 import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
+import ImportAthletes from "@/components/arm/ImportAthletes";
 import Icon from "@/components/ui/icon";
 import { StoreProvider, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ function Shell() {
           {section === "board" && <BoardSection />}
           {section === "athletes" && (
             <div className="flex flex-wrap gap-2">
+              <ImportAthletes />
               <TournamentFileButtons />
               <button className="pill" onClick={() => confirm("Загрузить пример турнира заново? Текущие данные будут заменены.") && resetDemo()}>
                 <Icon name="Sparkles" size={15} /> Загрузить пример

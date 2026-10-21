@@ -87,6 +87,7 @@ function demoState(): State {
 interface Ctx extends State {
   amap: Record<string, Athlete>;
   addAthlete: (a: Omit<Athlete, "id">) => void;
+  addAthletes: (list: Omit<Athlete, "id">[]) => void;
   updateAthlete: (id: string, patch: Partial<Athlete>) => void;
   removeAthlete: (id: string) => void;
   setGroups: (g: AgeGroup[]) => void;
@@ -121,6 +122,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addAthlete = useCallback(
     (a: Omit<Athlete, "id">) =>
       setS((p) => ({ ...p, athletes: [...p.athletes, { ...a, id: Math.random().toString(36).slice(2, 10) }] })),
+    [],
+  );
+  const addAthletes = useCallback(
+    (list: Omit<Athlete, "id">[]) =>
+      setS((p) => ({
+        ...p,
+        athletes: [...p.athletes, ...list.map((a) => ({ ...a, id: Math.random().toString(36).slice(2, 10) }))],
+      })),
     [],
   );
   const updateAthlete = useCallback(
@@ -227,6 +236,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ...s,
     amap,
     addAthlete,
+    addAthletes,
     updateAthlete,
     removeAthlete,
     setGroups,
