@@ -1,5 +1,12 @@
 export type Hand = "right" | "left";
 export type Gender = "M" | "F";
+/** Класс пара-армрестлинга (ПОДА): PID — сидя за столом, PIU — стоя. */
+export type ParaClass = "PID" | "PIU";
+export const PARA_LABEL: Record<ParaClass, string> = { PID: "PID — сидя", PIU: "PIU — стоя" };
+export const PARA_HINT: Record<ParaClass, string> = {
+  PID: "Спортсмены с ПОДА, соревнующиеся сидя (например, в инвалидной коляске)",
+  PIU: "Спортсмены с ПОДА, соревнующиеся стоя",
+};
 
 export interface Athlete {
   id: string;
@@ -18,6 +25,8 @@ export interface Athlete {
   absolute?: boolean;
   /** Совершеннолетний юниор также выступает во взрослой категории. undefined — по настройке турнира. */
   adult?: boolean;
+  /** Пара-армрестлинг (ПОДА): класс по положению за столом. */
+  para?: ParaClass;
   admit?: { med?: boolean; ins?: boolean; mandate?: boolean };
   out?: { reason: OutReason; at: number };
 }
@@ -50,6 +59,8 @@ export interface AgeGroup {
   absolute?: boolean;
   /** Взрослая группа (мужчины/женщины), куда допускаются совершеннолетние юниоры. */
   adult?: boolean;
+  /** Группа пара-армрестлинга (ПОДА): PID — сидя, PIU — стоя. */
+  para?: ParaClass;
 }
 
 export type MatchGroup = "A" | "B" | "F" | "SF" | "O" | "T" | "R" | "X";
@@ -258,14 +269,14 @@ export function weightClasses(groups: AgeGroup[]): WeightClass[] {
 export const ADULT_AGE = 18;
 
 /** Взрослая группа: отмечена вручную или открытая группа от 18 лет (мужчины/женщины). */
-export const isAdultGroup = (g: AgeGroup) => g.adult ?? (g.ageMin <= ADULT_AGE && g.ageMin >= 17 && g.ageMax >= 30);
+export const isAdultGroup = (g: AgeGroup) => !g.para && (g.adult ?? (g.ageMin <= ADULT_AGE && g.ageMin >= 17 && g.ageMax >= 30));
 
 const isYouthGroup = (g: AgeGroup) => !isAdultGroup(g) && g.ageMax <= 23;
 
 /** Основная возрастная группа: юношеская/юниорская важнее взрослой, иначе — первая подходящая. */
-export function groupOf(a: Pick<Athlete, "gender" | "birthYear">, groups: AgeGroup[], year: number): AgeGroup | null {
+export function groupOf(a: Pick<Athlete, "gender" | "birthYear" | "para">, groups: AgeGroup[], year: number): AgeGroup | null {
   const age = year - a.birthYear;
-  const fit = groups.filter((g) => g.gender === a.gender && age >= g.ageMin && age <= g.ageMax);
+  const fit = groups.filter((g) => g.gender === a.gender && (g.para ?? null) === (a.para ?? null) && age >= g.ageMin && age <= g.ageMax);
   return fit.find(isYouthGroup) ?? fit[0] ?? null;
 }
 
@@ -285,9 +296,9 @@ export function classOf(a: Athlete, groups: AgeGroup[], year: number, tol = 0): 
 }
 
 /** Взрослая группа, куда может быть дополнительно заявлен совершеннолетний юниор. */
-export function adultGroupFor(a: Pick<Athlete, "gender" | "birthYear">, groups: AgeGroup[], year: number): AgeGroup | null {
+export function adultGroupFor(a: Pick<Athlete, "gender" | "birthYear" | "para">, groups: AgeGroup[], year: number): AgeGroup | null {
   const age = year - a.birthYear;
-  if (age < ADULT_AGE) return null;
+  if (age < ADULT_AGE || a.para) return null;
   const main = groupOf(a, groups, year);
   if (!main || !isYouthGroup(main)) return null;
   return groups.find((g) => g.id !== main.id && g.gender === a.gender && isAdultGroup(g) && age >= Math.min(g.ageMin, ADULT_AGE)) ?? null;
@@ -948,6 +959,20 @@ export const AGE_PRESETS: { title: string; groups: Omit<AgeGroup, "id">[] }[] = 
     groups: [
       { name: "Ветераны", gender: "M", ageMin: 40, ageMax: 99, limits: [70, 80, 90, 100] },
       { name: "Ветераны (жен.)", gender: "F", ageMin: 40, ageMax: 99, limits: [60, 70] },
+    ],
+  },
+  {
+    title: "Пара-армрестлинг ПОДА: PID (сидя)",
+    groups: [
+      { name: "Мужчины PID (сидя)", gender: "M", ageMin: 16, ageMax: 99, limits: [60, 70, 80, 90], para: "PID" },
+      { name: "Женщины PID (сидя)", gender: "F", ageMin: 16, ageMax: 99, limits: [50, 60, 70], para: "PID" },
+    ],
+  },
+  {
+    title: "Пара-армрестлинг ПОДА: PIU (стоя)",
+    groups: [
+      { name: "Мужчины PIU (стоя)", gender: "M", ageMin: 16, ageMax: 99, limits: [65, 75, 85, 95], para: "PIU" },
+      { name: "Женщины PIU (стоя)", gender: "F", ageMin: 16, ageMax: 99, limits: [55, 65, 75], para: "PIU" },
     ],
   },
 ];

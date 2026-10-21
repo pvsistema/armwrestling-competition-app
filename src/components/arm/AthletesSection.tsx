@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
+import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, PARA_HINT, PARA_LABEL, ParaClass, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -15,6 +15,7 @@ const EMPTY = {
   rank: "",
   district: "",
   hands: ["left", "right"] as Hand[],
+  para: "" as ParaClass | "",
 };
 
 export default function AthletesSection() {
@@ -64,9 +65,10 @@ export default function AthletesSection() {
       birthDate,
       rank: f.rank || undefined,
       district: f.district || undefined,
+      para: f.para || undefined,
     });
     toast({ title: `Участник добавлен: ${f.name.trim()}`, description: preview?.text ?? "" });
-    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district });
+    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district, para: f.para });
   };
 
   const preview = useMemo(() => {
@@ -74,9 +76,9 @@ export default function AthletesSection() {
     const by = dm ? parseInt(dm[3], 10) : parseInt(f.birthYear, 10);
     if (!by || by < 1930 || by > year - 10) return null;
     const w = f.weight ? parseFloat(f.weight.replace(",", ".")) : null;
-    const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands };
+    const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands, para: f.para || undefined };
     return distribution(tmp, groups, tournament);
-  }, [f.birthYear, f.weight, f.gender, f.hands, groups, tournament, year]);
+  }, [f.birthYear, f.weight, f.gender, f.hands, f.para, groups, tournament, year]);
 
   const toggleHand = (h: Hand) =>
     setF((p) => ({ ...p, hands: p.hands.includes(h) ? p.hands.filter((x) => x !== h) : [...p.hands, h] }));
@@ -148,6 +150,24 @@ export default function AthletesSection() {
                 </select>
               </Field>
             </div>
+            <Field label="Пара-армрестлинг (ПОДА)">
+              <div className="flex h-11 rounded-[14px] border border-line bg-surface p-1">
+                {([["", "Нет"], ["PID", "PID · сидя"], ["PIU", "PIU · стоя"]] as const).map(([k, l]) => (
+                  <button
+                    type="button"
+                    key={k}
+                    title={k ? PARA_HINT[k] : "Обычные категории"}
+                    onClick={() => setF({ ...f, para: k })}
+                    className={cn(
+                      "flex-1 rounded-[10px] text-sm font-medium",
+                      f.para === k ? (k ? "bg-copper text-white" : "bg-primary text-primary-foreground") : "text-panel-muted hover:text-foreground",
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </Field>
             <Field label="Вес на взвешивании, кг (можно позже)" error={err.weight}>
               <input className="field font-mono" inputMode="decimal" value={f.weight} onChange={(e) => setF({ ...f, weight: e.target.value })} placeholder="79,4" />
             </Field>
@@ -276,7 +296,13 @@ function distribution(a: Athlete, groups: AgeGroup[], t: Tournament): { ok: bool
   const year = tournamentYear(t);
   const age = year - a.birthYear;
   const g = groupOf(a, groups, year);
-  if (!g) return { ok: false, text: `Возраст ${age}: нет подходящей возрастной группы — добавьте её в «Категориях».` };
+  if (!g)
+    return {
+      ok: false,
+      text: a.para
+        ? `ПОДА ${a.para}: нет группы этого класса для возраста ${age} — добавьте набор «Пара-армрестлинг ПОДА» в «Категориях».`
+        : `Возраст ${age}: нет подходящей возрастной группы — добавьте её в «Категориях».`,
+    };
   const ag = adultOn(a, t) ? adultGroupFor(a, groups, year) : null;
   if (a.weight == null)
     return { ok: true, text: `${g.name}${ag ? ` + ${ag.name}` : ""} — весовая категория определится после взвешивания.` };
@@ -355,6 +381,11 @@ function Row({
       <td className="px-2 py-2.5 font-mono text-panel-muted">
         {fmtBirth(a)}
         {a.rank && <div className="font-sans text-xs">{a.rank}</div>}
+        {a.para && (
+          <div className="mt-0.5 inline-block rounded-full bg-copper px-1.5 py-px font-sans text-[10px] font-semibold text-white" title={PARA_HINT[a.para]}>
+            ПОДА {a.para}
+          </div>
+        )}
       </td>
       <td className="px-2 py-2.5 text-panel-muted">
         {a.club || "—"} · {a.city || "—"}
@@ -387,6 +418,19 @@ function Row({
           >
             ↑ выше
           </button>
+          <select
+            value={a.para ?? ""}
+            onChange={(e) => onPatch({ para: (e.target.value || undefined) as ParaClass | undefined })}
+            className={cn("h-[20px] rounded-full px-1.5 text-[11px] outline-none", a.para ? "bg-copper text-white" : "bg-surface text-panel-muted")}
+            title="Пара-армрестлинг (ПОДА)"
+          >
+            <option value="">без ПОДА</option>
+            {(Object.keys(PARA_LABEL) as ParaClass[]).map((k) => (
+              <option key={k} value={k}>
+                {PARA_LABEL[k]}
+              </option>
+            ))}
+          </select>
           {canAdult && (
             <button
               className={cn("rounded-full px-2 py-0.5 text-[11px]", adult ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}

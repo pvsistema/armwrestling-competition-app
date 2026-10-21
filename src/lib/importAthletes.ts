@@ -2,7 +2,7 @@ import { Athlete, DISTRICTS, Gender, Hand, RANKS } from "./arm";
 
 export type Draft = Omit<Athlete, "id"> & { _row: number; _errors: string[]; _dup?: boolean };
 
-type Col = "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left";
+type Col = "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left" | "para";
 
 const HEADERS: [Col, RegExp][] = [
   ["num", /^(№|n|no|#|п\/п|№ ?п\/п)$/],
@@ -12,6 +12,7 @@ const HEADERS: [Col, RegExp][] = [
   ["patronymic", /^отчество$/],
   ["gender", /^(пол|м\/ж)/],
   ["birth", /(дата.*рожд|год.*рожд|г\.?\s*р|д\.?\s*р|рожд)/],
+  ["para", /(пода|пара|^класс|pid|piu)/],
   ["rank", /(звани|разряд|квалиф)/],
   ["district", /(округ|фо$)/],
   ["club", /(субъект|команд|клуб|регион|организац|сборная|область)/],
@@ -188,6 +189,7 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
       rank: parseRank(gs(row, "rank")),
       district: parseDistrict(gs(row, "district")),
       hands: parseHands(gs(row, "hands"), gs(row, "right"), gs(row, "left"), hasRL),
+      para: /pid|сид|коляс/i.test(gs(row, "para")) ? "PID" : /piu|сто/i.test(gs(row, "para")) ? "PIU" : undefined,
     };
     const key = name.toLowerCase();
     if (known.has(key)) d._dup = true;

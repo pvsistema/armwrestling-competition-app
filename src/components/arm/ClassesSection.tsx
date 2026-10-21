@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { isAdultGroup, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { isAdultGroup, PARA_LABEL, ParaClass, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { shortLabel } from "@/lib/timers";
 
@@ -146,6 +146,7 @@ export default function ClassesSection({ onNext }: { onNext?: () => void }) {
           )}
           <p className="px-4 pb-3 pt-3 text-xs text-panel-muted">
             Весовые категории в наборах — типовые по правилам ФАР, проверьте их по положению вашего турнира. Возраст считается по году рождения.
+            Группы ПОДА (пара-армрестлинг): PID — спортсмены соревнуются сидя, PIU — стоя. В них попадают только участники с указанным пара-классом.
           </p>
         </div>
         {!groups.length && (
@@ -204,13 +205,26 @@ function GroupCard({
             –
             <input className="h-8 w-12 rounded-full border border-line bg-panel text-center text-foreground outline-none" value={g.ageMax} onChange={(e) => onChange({ ageMax: parseInt(e.target.value) || 0 })} />
           </div>
-          <button
+          <select
+            value={g.para ?? ""}
+            onChange={(e) => onChange({ para: (e.target.value || undefined) as ParaClass | undefined, ...(e.target.value ? { adult: false } : {}) })}
+            className={cn("h-7 rounded-full border px-2 text-xs font-medium outline-none", g.para ? "border-copper bg-copper text-white" : "border-line bg-panel text-panel-muted")}
+            title="Пара-армрестлинг (ПОДА): в группу попадают только спортсмены с этим классом"
+          >
+            <option value="">без ПОДА</option>
+            {(Object.keys(PARA_LABEL) as ParaClass[]).map((k) => (
+              <option key={k} value={k}>
+                ПОДА {PARA_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          {!g.para && <button
             onClick={() => onChange({ adult: !isAdultGroup(g) })}
             className={cn("rounded-full px-3 py-1 text-xs font-medium", isAdultGroup(g) ? "bg-primary text-primary-foreground" : "bg-panel text-panel-muted hover:text-foreground")}
             title="Взрослая группа: сюда дополнительно попадают совершеннолетние юниоры"
           >
             {isAdultGroup(g) ? "✓ " : "+ "}взрослая
-          </button>
+          </button>}
           <button
             onClick={() => onChange({ absolute: !g.absolute })}
             className={cn("rounded-full px-3 py-1 text-xs font-medium", g.absolute ? "bg-primary text-primary-foreground" : "bg-panel text-panel-muted hover:text-foreground")}
