@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, classOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
+import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -65,9 +65,18 @@ export default function AthletesSection() {
       rank: f.rank || undefined,
       district: f.district || undefined,
     });
-    toast({ title: "Участник добавлен", description: f.name.trim() });
+    toast({ title: `Участник добавлен: ${f.name.trim()}`, description: preview?.text ?? "" });
     setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district });
   };
+
+  const preview = useMemo(() => {
+    const dm = f.birthYear.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    const by = dm ? parseInt(dm[3], 10) : parseInt(f.birthYear, 10);
+    if (!by || by < 1930 || by > year - 10) return null;
+    const w = f.weight ? parseFloat(f.weight.replace(",", ".")) : null;
+    const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands };
+    return distribution(tmp, groups, tournament);
+  }, [f.birthYear, f.weight, f.gender, f.hands, groups, tournament, year]);
 
   const toggleHand = (h: Hand) =>
     setF((p) => ({ ...p, hands: p.hands.includes(h) ? p.hands.filter((x) => x !== h) : [...p.hands, h] }));
@@ -142,6 +151,12 @@ export default function AthletesSection() {
             <Field label="Вес на взвешивании, кг (можно позже)" error={err.weight}>
               <input className="field font-mono" inputMode="decimal" value={f.weight} onChange={(e) => setF({ ...f, weight: e.target.value })} placeholder="79,4" />
             </Field>
+            {preview && (
+              <div className={cn("flex items-start gap-2 rounded-[12px] px-3 py-2.5 text-sm", preview.ok ? "bg-gold-soft text-tip-foreground" : "bg-surface text-panel-muted")}>
+                <Icon name={preview.ok ? "Sparkles" : "Info"} size={16} className="mt-0.5 shrink-0" />
+                <span>{preview.text}</span>
+              </div>
+            )}
             <Field label="Руки" error={err.hands}>
               <div className="flex gap-2">
                 {(["left", "right"] as Hand[]).map((h) => (
@@ -217,6 +232,12 @@ export default function AthletesSection() {
                       const c = classOf(a, groups, year, tournament.tolerance ?? 0);
                       return c ? `${classMap[c.key]?.groupName} · ${c.label}` : a.weight == null ? "после взвешивания" : "нет подходящей";
                     })()}
+                    adultLabel={(() => {
+                      const c = adultClassOf(a, groups, tournament);
+                      return c ? `${c.groupName} · ${c.label}` : "";
+                    })()}
+                    canAdult={!!adultGroupFor(a, groups, year)}
+                    adult={adultOn(a, tournament)}
                     hint={weightHint(a, groups, year, tournament)}
                     canAbs={(() => {
                       const c = classOf(a, groups, year, tournament.tolerance ?? 0);
@@ -250,6 +271,21 @@ export default function AthletesSection() {
   );
 }
 
+/** Куда автоматически попадёт спортсмен. */
+function distribution(a: Athlete, groups: AgeGroup[], t: Tournament): { ok: boolean; text: string } {
+  const year = tournamentYear(t);
+  const age = year - a.birthYear;
+  const g = groupOf(a, groups, year);
+  if (!g) return { ok: false, text: `Возраст ${age}: нет подходящей возрастной группы — добавьте её в «Категориях».` };
+  const ag = adultOn(a, t) ? adultGroupFor(a, groups, year) : null;
+  if (a.weight == null)
+    return { ok: true, text: `${g.name}${ag ? ` + ${ag.name}` : ""} — весовая категория определится после взвешивания.` };
+  const c = classOf(a, groups, year, t.tolerance ?? 0);
+  const ad = adultClassOf(a, groups, t);
+  const parts = [c && `${g.name} ${c.label}`, ad && `${ad.groupName} ${ad.label}`].filter(Boolean);
+  return { ok: !!c, text: c ? `Распределён: ${parts.join(" + ")}` : "Нет подходящей весовой категории." };
+}
+
 /** Подсказка по весу: провес, заявка выше, нет допуска. */
 function weightHint(a: Athlete, groups: AgeGroup[], year: number, t: Tournament): string {
   if (a.weight == null) return "";
@@ -269,6 +305,9 @@ function Row({
   classLabel,
   hint,
   canAbs,
+  adultLabel,
+  canAdult,
+  adult,
   needAdmit,
   onWeight,
   onHands,
@@ -280,6 +319,9 @@ function Row({
   classLabel: string;
   hint: string;
   canAbs: boolean;
+  adultLabel: string;
+  canAdult: boolean;
+  adult: boolean;
   needAdmit: boolean;
   onWeight: (w: number | null) => void;
   onHands: (h: Hand[]) => void;
@@ -336,6 +378,7 @@ function Row({
       <td className="px-2 py-2.5 text-panel-muted">
         {classLabel}
         {hint && <div className="text-xs text-primary">{hint}</div>}
+        {adultLabel && <div className="text-xs font-medium text-copper">+ {adultLabel}</div>}
         <div className="mt-1 flex flex-wrap gap-1">
           <button
             className={cn("rounded-full px-2 py-0.5 text-[11px]", a.upClass ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}
@@ -344,6 +387,15 @@ function Row({
           >
             ↑ выше
           </button>
+          {canAdult && (
+            <button
+              className={cn("rounded-full px-2 py-0.5 text-[11px]", adult ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}
+              onClick={() => onPatch({ adult: !adult })}
+              title="Совершеннолетний юниор выступает также во взрослой категории"
+            >
+              + взрослые
+            </button>
+          )}
           {canAbs && (
             <button
               className={cn("rounded-full px-2 py-0.5 text-[11px]", a.absolute ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}

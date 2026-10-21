@@ -6,8 +6,8 @@ import Logo from "./Logo";
 import type { Section } from "./AppHeader";
 
 const STEPS: { id: Section; title: string; text: string; icon: string }[] = [
-  { id: "athletes", title: "Участники", text: "Регистрация, взвешивание, импорт из Excel", icon: "Users" },
-  { id: "classes", title: "Категории", text: "Весовые категории, система, порядок рук", icon: "Scale" },
+  { id: "classes", title: "Категории", text: "Возрастные и весовые категории, система, порядок рук", icon: "Scale" },
+  { id: "athletes", title: "Участники", text: "Регистрация, взвешивание и автораспределение", icon: "Users" },
   { id: "bracket", title: "Сетка", text: "Жеребьёвка и сетки по категориям", icon: "GitFork" },
   { id: "judge", title: "Пульт судьи", text: "Схватки, фолы, вызов к столу", icon: "Gavel" },
   { id: "results", title: "Протоколы", text: "PDF, Word, Excel по образцу ФАР", icon: "FileText" },
@@ -26,11 +26,11 @@ function Flag({ className }: { className?: string }) {
 }
 
 export default function HomeSection({ onSection }: { onSection: (s: Section) => void }) {
-  const { tournament: t, athletes, brackets, matches } = useStore();
+  const { tournament: t, athletes, brackets, matches, groups } = useStore();
   const done = matches.filter((m) => m.winner).length;
   const started = athletes.length > 0;
-  const next: Section = !started ? "athletes" : !brackets.length ? "bracket" : done < matches.length ? "judge" : "results";
-  const nextLabel = !started ? "Начать регистрацию" : !brackets.length ? "Провести жеребьёвку" : done < matches.length ? "Продолжить турнир" : "Открыть протоколы";
+  const next: Section = !groups.length ? "classes" : !started ? "athletes" : !brackets.length ? "bracket" : done < matches.length ? "judge" : "results";
+  const nextLabel = !groups.length ? "Выбрать категории" : !started ? "Начать регистрацию" : !brackets.length ? "Провести жеребьёвку" : done < matches.length ? "Продолжить турнир" : "Открыть протоколы";
   const when = [t.place, fmtDateRange(t.date, t.dateEnd)].filter(Boolean).join(" · ");
 
   return (

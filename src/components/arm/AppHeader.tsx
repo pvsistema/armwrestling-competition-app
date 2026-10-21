@@ -8,8 +8,8 @@ export type Section = "home" | "athletes" | "classes" | "bracket" | "judge" | "r
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "House" },
-  { id: "athletes", label: "Участники", icon: "Users" },
   { id: "classes", label: "Категории", icon: "Scale" },
+  { id: "athletes", label: "Участники", icon: "Users" },
   { id: "bracket", label: "Сетка", icon: "GitFork" },
   { id: "judge", label: "Пульт судьи", icon: "Gavel" },
   { id: "results", label: "Протоколы", icon: "FileText" },

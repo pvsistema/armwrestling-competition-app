@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { isAdultGroup, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { shortLabel } from "@/lib/timers";
 
-export default function ClassesSection() {
+export default function ClassesSection({ onNext }: { onNext?: () => void }) {
   const { groups, setGroups, athletes, tournament, setTournament } = useStore();
   const year = tournamentYear(tournament);
 
@@ -124,7 +124,17 @@ export default function ClassesSection() {
               );
             })}
           </div>
-          <p className="px-4 pb-3 text-xs text-panel-muted">
+          {groups.length > 0 && onNext && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-gold-soft/50 px-4 py-3">
+              <span className="text-sm">
+                Категории выбраны: <b>{groups.length}</b> возрастных групп. Участники будут распределяться автоматически.
+              </span>
+              <button className="btn-blue !py-2" onClick={onNext}>
+                Далее: регистрация участников <Icon name="ArrowRight" size={16} />
+              </button>
+            </div>
+          )}
+          <p className="px-4 pb-3 pt-3 text-xs text-panel-muted">
             Весовые категории в наборах — типовые по правилам ФАР, проверьте их по положению вашего турнира. Возраст считается по году рождения.
           </p>
         </div>
@@ -184,6 +194,13 @@ function GroupCard({
             –
             <input className="h-8 w-12 rounded-full border border-line bg-panel text-center text-foreground outline-none" value={g.ageMax} onChange={(e) => onChange({ ageMax: parseInt(e.target.value) || 0 })} />
           </div>
+          <button
+            onClick={() => onChange({ adult: !isAdultGroup(g) })}
+            className={cn("rounded-full px-3 py-1 text-xs font-medium", isAdultGroup(g) ? "bg-primary text-primary-foreground" : "bg-panel text-panel-muted hover:text-foreground")}
+            title="Взрослая группа: сюда дополнительно попадают совершеннолетние юниоры"
+          >
+            {isAdultGroup(g) ? "✓ " : "+ "}взрослая
+          </button>
           <button
             onClick={() => onChange({ absolute: !g.absolute })}
             className={cn("rounded-full px-3 py-1 text-xs font-medium", g.absolute ? "bg-primary text-primary-foreground" : "bg-panel text-panel-muted hover:text-foreground")}
@@ -454,6 +471,15 @@ function SystemCard() {
         </button>
         <p className="text-xs leading-relaxed text-panel-muted">
           Врач, страховка и комиссия по допуску (п. 3.1, 7). Без всех трёх отметок спортсмен не попадает в жеребьёвку.
+        </p>
+        <button
+          className={cn("pill mt-1 justify-start", (tournament.juniorsToAdults ?? true) && "pill-on")}
+          onClick={() => setTournament({ juniorsToAdults: !(tournament.juniorsToAdults ?? true) })}
+        >
+          <Icon name={(tournament.juniorsToAdults ?? true) ? "SquareCheck" : "Square"} size={15} /> Совершеннолетних юниоров — и во взрослые
+        </button>
+        <p className="text-xs leading-relaxed text-panel-muted">
+          Юниоры от 18 лет выступают в своей юниорской категории и дополнительно во взрослой (мужчины / женщины) по своему весу. У отдельного спортсмена можно отключить в «Участниках».
         </p>
       </div>
     </div>

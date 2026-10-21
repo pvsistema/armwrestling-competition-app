@@ -16,6 +16,8 @@ export interface Athlete {
   district?: string;
   upClass?: boolean;
   absolute?: boolean;
+  /** Совершеннолетний юниор также выступает во взрослой категории. undefined — по настройке турнира. */
+  adult?: boolean;
   admit?: { med?: boolean; ins?: boolean; mandate?: boolean };
   out?: { reason: OutReason; at: number };
 }
@@ -46,6 +48,8 @@ export interface AgeGroup {
   ageMax: number;
   limits: number[];
   absolute?: boolean;
+  /** Взрослая группа (мужчины/женщины), куда допускаются совершеннолетние юниоры. */
+  adult?: boolean;
 }
 
 export type MatchGroup = "A" | "B" | "F" | "SF" | "O" | "T" | "R" | "X";
@@ -132,6 +136,8 @@ export interface Tournament {
   handFlow?: HandFlow;
   /** Секретарь вручную разрешил начать вторую руку раньше. */
   secondHandOpen?: boolean;
+  /** Совершеннолетние юниоры автоматически заявляются и во взрослые категории (по умолчанию — да). */
+  juniorsToAdults?: boolean;
 }
 
 export type HandFlow = "table" | "all" | "free";
@@ -249,17 +255,51 @@ export function weightClasses(groups: AgeGroup[]): WeightClass[] {
   return res;
 }
 
-/** Весовая категория по весу с учётом провеса (п. 8.8) и заявки на категорию выше (п. 8.9). */
-export function classOf(a: Athlete, groups: AgeGroup[], year: number, tol = 0): WeightClass | null {
-  if (a.weight == null) return null;
+export const ADULT_AGE = 18;
+
+/** Взрослая группа: отмечена вручную или открытая группа от 18 лет (мужчины/женщины). */
+export const isAdultGroup = (g: AgeGroup) => g.adult ?? (g.ageMin <= ADULT_AGE && g.ageMin >= 17 && g.ageMax >= 30);
+
+const isYouthGroup = (g: AgeGroup) => !isAdultGroup(g) && g.ageMax <= 23;
+
+/** Основная возрастная группа: юношеская/юниорская важнее взрослой, иначе — первая подходящая. */
+export function groupOf(a: Pick<Athlete, "gender" | "birthYear">, groups: AgeGroup[], year: number): AgeGroup | null {
   const age = year - a.birthYear;
-  const g = groups.find((g) => g.gender === a.gender && age >= g.ageMin && age <= g.ageMax);
-  if (!g) return null;
+  const fit = groups.filter((g) => g.gender === a.gender && age >= g.ageMin && age <= g.ageMax);
+  return fit.find(isYouthGroup) ?? fit[0] ?? null;
+}
+
+function classInGroup(a: Athlete, g: AgeGroup, tol: number, up: boolean): WeightClass | null {
+  if (a.weight == null) return null;
   const classes = weightClasses([g]).filter((c) => !c.abs);
   let i = classes.findIndex((c) => c.limit == null || a.weight! <= c.limit + tol + 1e-9);
   if (i < 0) return null;
-  if (a.upClass && i < classes.length - 1) i++;
+  if (up && i < classes.length - 1) i++;
   return classes[i];
+}
+
+/** Весовая категория по весу с учётом провеса (п. 8.8) и заявки на категорию выше (п. 8.9). */
+export function classOf(a: Athlete, groups: AgeGroup[], year: number, tol = 0): WeightClass | null {
+  const g = groupOf(a, groups, year);
+  return g ? classInGroup(a, g, tol, !!a.upClass) : null;
+}
+
+/** Взрослая группа, куда может быть дополнительно заявлен совершеннолетний юниор. */
+export function adultGroupFor(a: Pick<Athlete, "gender" | "birthYear">, groups: AgeGroup[], year: number): AgeGroup | null {
+  const age = year - a.birthYear;
+  if (age < ADULT_AGE) return null;
+  const main = groupOf(a, groups, year);
+  if (!main || !isYouthGroup(main)) return null;
+  return groups.find((g) => g.id !== main.id && g.gender === a.gender && isAdultGroup(g) && age >= Math.min(g.ageMin, ADULT_AGE)) ?? null;
+}
+
+export const adultOn = (a: Athlete, t: Tournament) => a.adult ?? t.juniorsToAdults ?? true;
+
+/** Взрослая весовая категория совершеннолетнего юниора (если он в неё заявлен). */
+export function adultClassOf(a: Athlete, groups: AgeGroup[], t: Tournament): WeightClass | null {
+  if (!adultOn(a, t)) return null;
+  const g = adultGroupFor(a, groups, tournamentYear(t));
+  return g ? classInGroup(a, g, t.tolerance ?? 0, false) : null;
 }
 
 export const isAdmitted = (a: Athlete, t: Tournament) =>
@@ -273,6 +313,8 @@ export function entryClasses(a: Athlete, groups: AgeGroup[], t: Tournament): Wei
   const res = [c];
   const g = groups.find((x) => x.id === c.groupId);
   if (a.absolute && g?.absolute) res.push(weightClasses([g]).find((x) => x.abs)!);
+  const ad = adultClassOf(a, groups, t);
+  if (ad && !res.some((x) => x.key === ad.key)) res.push(ad);
   return res;
 }
 
@@ -897,8 +939,8 @@ export const AGE_PRESETS: { title: string; groups: Omit<AgeGroup, "id">[] }[] = 
   {
     title: "Мужчины и женщины",
     groups: [
-      { name: "Мужчины", gender: "M", ageMin: 18, ageMax: 99, limits: [55, 60, 65, 70, 75, 80, 85, 90, 100, 110] },
-      { name: "Женщины", gender: "F", ageMin: 18, ageMax: 99, limits: [50, 55, 60, 65, 70, 80, 90] },
+      { name: "Мужчины", gender: "M", ageMin: 18, ageMax: 99, limits: [55, 60, 65, 70, 75, 80, 85, 90, 100, 110], adult: true },
+      { name: "Женщины", gender: "F", ageMin: 18, ageMax: 99, limits: [50, 55, 60, 65, 70, 80, 90], adult: true },
     ],
   },
   {

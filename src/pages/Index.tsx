@@ -9,6 +9,7 @@ import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
 import HomeSection from "@/components/arm/HomeSection";
+import NeedGroups from "@/components/arm/NeedGroups";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
 import RestoreBackup from "@/components/arm/RestoreBackup";
 import PrintFooter from "@/components/arm/PrintFooter";
@@ -22,7 +23,8 @@ import { cn } from "@/lib/utils";
 function Shell() {
   const [section, setSection] = useState<Section>("home");
   const [table, setTable] = useState<number | "all">("all");
-  const { tournament, resetEmpty } = useStore();
+  const { tournament, groups, resetEmpty } = useStore();
+  const locked = !groups.length && (section === "athletes" || section === "bracket" || section === "judge");
 
   const tables: (number | "all")[] = ["all", ...Array.from({ length: tournament.tables }, (_, i) => i + 1)];
 
@@ -69,14 +71,15 @@ function Shell() {
               setSection("judge");
             }}
           />
-          {section === "judge" && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}
+          {locked && <NeedGroups onGo={() => setSection("classes")} onDone={() => setSection("athletes")} />}
+          {section === "judge" && !locked && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}
           {section === "home" && <HomeSection onSection={setSection} />}
-          {section === "athletes" && <AthletesSection />}
-          {section === "classes" && <ClassesSection />}
-          {section === "bracket" && <BracketSection />}
+          {section === "athletes" && !locked && <AthletesSection />}
+          {section === "classes" && <ClassesSection onNext={() => setSection("athletes")} />}
+          {section === "bracket" && !locked && <BracketSection />}
           {section === "results" && <ResultsSection />}
           {section === "board" && <BoardSection />}
-          {section === "athletes" && (
+          {section === "athletes" && !locked && (
             <div className="flex flex-wrap gap-2">
               <ImportAthletes />
               <TournamentFileButtons />
