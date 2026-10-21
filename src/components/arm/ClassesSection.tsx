@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { AgeGroup, Gender, GENDER_LABEL, classOf, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, classOf, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 
 export default function ClassesSection() {
@@ -63,6 +63,7 @@ export default function ClassesSection() {
             </L>
           </div>
         </div>
+        <ScoringCard />
         <div className="rounded-lg bg-tip p-4 text-sm leading-relaxed text-tip-foreground">
           <div className="mb-1 font-semibold">Как считается возраст</div>
           Возраст = год турнира ({year}) минус год рождения. Вес сравнивается с верхней границей: 80,0 кг — ещё «до 80».
@@ -172,5 +173,60 @@ function L({ label, children }: { label: string; children: React.ReactNode }) {
       <span className="font-mono text-xs text-panel-muted">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ScoringCard() {
+  const { tournament, setTournament } = useStore();
+  const mode = tMode(tournament);
+  const pts = tPoints(tournament);
+  const [txt, setTxt] = useState(pts.join(", "));
+  const commit = () => {
+    const arr = txt
+      .split(/[\s,;]+/)
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x >= 0);
+    setTournament({ points: arr.length ? arr : DEFAULT_POINTS });
+    setTxt((arr.length ? arr : DEFAULT_POINTS).join(", "));
+  };
+  return (
+    <div className="win">
+      <div className="win-bar">
+        <i />
+        <i />
+        <i />
+        <b>правила подсчёта</b>
+      </div>
+      <div className="flex flex-col gap-3 p-5">
+        <div className="flex flex-col gap-2">
+          {(Object.keys(MODE_LABEL) as ScoringMode[]).map((m) => (
+            <button
+              key={m}
+              className={cn("pill justify-start", mode === m && "pill-on")}
+              onClick={() => setTournament({ mode: m })}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs leading-relaxed text-panel-muted">
+          {mode === "hands"
+            ? "Места и очки по каждой руке отдельно. Командный зачёт — сумма очков по обеим рукам."
+            : "Дополнительно считается двоеборье: сумма очков за места на правой и левой руке. При равенстве — меньший вес, перевзвешивание, лучшее место на одной из рук; возможны два 3-х места (п. 2.7)."}
+        </p>
+        <L label="Очки за места 1, 2, 3…">
+          <input
+            className="field font-mono"
+            value={txt}
+            onChange={(e) => setTxt(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === "Enter" && commit()}
+          />
+        </L>
+        <button className="self-start text-xs underline text-panel-muted" onClick={() => { setTournament({ points: DEFAULT_POINTS }); setTxt(DEFAULT_POINTS.join(", ")); }}>
+          Вернуть стандартные ({DEFAULT_POINTS.join(", ")})
+        </button>
+      </div>
+    </div>
   );
 }

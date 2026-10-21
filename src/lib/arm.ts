@@ -10,6 +10,7 @@ export interface Athlete {
   club: string;
   city: string;
   hands: Hand[];
+  reweigh?: number | null;
 }
 
 export interface AgeGroup {
@@ -59,7 +60,19 @@ export interface Tournament {
   tables: number;
   chiefJudge: string;
   secretary: string;
+  mode?: ScoringMode;
+  points?: number[];
 }
+
+export type ScoringMode = "hands" | "biathlon";
+export const DEFAULT_POINTS = [25, 17, 9, 5, 3, 2];
+export const MODE_LABEL: Record<ScoringMode, string> = {
+  hands: "Каждая рука отдельно (WAF)",
+  biathlon: "Двоеборье (ФАР)",
+};
+export const tMode = (t: Tournament): ScoringMode => t.mode ?? "hands";
+export const tPoints = (t: Tournament): number[] => (t.points?.length ? t.points : DEFAULT_POINTS);
+export const pointsFor = (place: number, pts: number[]) => pts[place - 1] ?? 0;
 
 export interface WeightClass {
   key: string;
@@ -264,6 +277,35 @@ export interface PlaceRow {
   place: number;
   wins: number;
   losses: number;
+  note?: string;
+  needReweigh?: boolean;
+}
+
+function firstLossRounds(bracket: Bracket, matches: Match[]): Record<string, number> {
+  const r: Record<string, number> = {};
+  matches
+    .filter((m) => m.key === bracket.key && m.winner)
+    .forEach((m) => {
+      const loser = m.winner === m.a ? m.b : m.a;
+      if (r[loser] == null || m.round < r[loser]) r[loser] = m.round;
+    });
+  return r;
+}
+
+const W = (a?: Athlete) => a?.weight ?? Infinity;
+const RW = (a?: Athlete) => (a?.reweigh == null ? null : a.reweigh);
+
+type TieResult = { cmp: number; how: "weight" | "reweigh" | "unbeaten" | "none" | "other"; needReweigh: boolean };
+
+/** Разрешение равенства по ArmScorer: вес → перевзвешивание (п. 2.4) → дольше без поражений. */
+function breakTie(a: Athlete | undefined, b: Athlete | undefined, flA: number, flB: number): TieResult {
+  if (W(a) !== W(b)) return { cmp: W(a) - W(b), how: "weight", needReweigh: false };
+  const ra = RW(a);
+  const rb = RW(b);
+  if (ra != null && rb != null && ra !== rb) return { cmp: ra - rb, how: "reweigh", needReweigh: false };
+  const need = ra == null || rb == null;
+  if (flA !== flB) return { cmp: flB - flA, how: "unbeaten", needReweigh: need };
+  return { cmp: 0, how: "none", needReweigh: need };
 }
 
 export function places(
@@ -272,14 +314,158 @@ export function places(
   athletes: Record<string, Athlete>,
 ): PlaceRow[] {
   const st = standings(bracket, matches);
+  const fl = firstLossRounds(bracket, matches);
+  const flOf = (id: string) => fl[id] ?? Infinity;
   const rows = Object.values(st);
-  rows.sort((x, y) => {
+  const pre = (x: Standing, y: Standing) => {
     const ex = x.elimRound ?? Infinity;
     const ey = y.elimRound ?? Infinity;
     if (ex !== ey) return ey - ex;
-    if (x.losses !== y.losses) return x.losses - y.losses;
-    if (x.wins !== y.wins) return y.wins - x.wins;
-    return (athletes[x.id]?.weight ?? 0) - (athletes[y.id]?.weight ?? 0);
-  });
-  return rows.map((r, i) => ({ id: r.id, place: i + 1, wins: r.wins, losses: r.losses }));
+    if (x.elimRound == null && x.losses !== y.losses) return x.losses - y.losses;
+    if (x.elimRound == null && x.wins !== y.wins) return y.wins - x.wins;
+    return 0;
+  };
+  rows.sort((x, y) => pre(x, y) || breakTie(athletes[x.id], athletes[y.id], flOf(x.id), flOf(y.id)).cmp);
+
+  const out: PlaceRow[] = rows.map((r) => ({ id: r.id, place: 0, wins: r.wins, losses: r.losses }));
+  for (let i = 0; i < rows.length; i++) {
+    out[i].place = i + 1;
+    if (i === 0) continue;
+    const x = rows[i - 1];
+    const y = rows[i];
+    if (pre(x, y) !== 0 || x.elimRound == null) continue;
+    const t = breakTie(athletes[x.id], athletes[y.id], flOf(x.id), flOf(y.id));
+    const nx = athletes[x.id]?.name ?? "";
+    const ny = athletes[y.id]?.name ?? "";
+    if (t.how === "weight") continue;
+    if (t.needReweigh) {
+      out[i - 1].needReweigh = out[i].needReweigh = true;
+      out[i].note = `Вес равный: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
+    }
+    if (t.how === "reweigh") out[i].note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
+    else if (t.how === "unbeaten" && !t.needReweigh)
+      out[i].note = `Вес после перевзвешивания равный: ${nx} выше, т.к. дольше шёл без поражений.`;
+    else if (t.how === "none") {
+      out[i].place = out[i - 1].place;
+      if (!t.needReweigh) out[i].note = `Полное равенство: ${nx} и ${ny} делят ${out[i].place} место.`;
+    }
+  }
+  return out;
+}
+
+export interface BiathlonRow {
+  id: string;
+  place: number;
+  right: number | null;
+  left: number | null;
+  rightPts: number;
+  leftPts: number;
+  total: number;
+  note?: string;
+  needReweigh?: boolean;
+}
+
+/** Двоеборье (ФАР): сумма очков за места на правой и левой руке. */
+export function biathlon(
+  classKey: string,
+  brackets: Bracket[],
+  matches: Match[],
+  athletes: Record<string, Athlete>,
+  pts: number[],
+): BiathlonRow[] {
+  const map: Record<string, BiathlonRow> = {};
+  for (const hand of ["right", "left"] as Hand[]) {
+    const b = brackets.find((x) => x.classKey === classKey && x.hand === hand);
+    if (!b) continue;
+    for (const r of places(b, matches, athletes)) {
+      const row = (map[r.id] ||= { id: r.id, place: 0, right: null, left: null, rightPts: 0, leftPts: 0, total: 0 });
+      const p = pointsFor(r.place, pts);
+      if (hand === "right") {
+        row.right = r.place;
+        row.rightPts = p;
+      } else {
+        row.left = r.place;
+        row.leftPts = p;
+      }
+      row.total += p;
+    }
+  }
+  const rows = Object.values(map);
+  const best = (r: BiathlonRow) => Math.min(r.right ?? Infinity, r.left ?? Infinity);
+  const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total;
+  const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], -best(x), -best(y));
+  rows.sort((x, y) => cmpBase(x, y) || tie(x, y).cmp);
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].place = i + 1;
+    if (i === 0 || cmpBase(rows[i - 1], rows[i]) !== 0) continue;
+    const x = rows[i - 1];
+    const y = rows[i];
+    const t = tie(x, y);
+    const nx = athletes[x.id]?.name ?? "";
+    const ny = athletes[y.id]?.name ?? "";
+    if (t.how === "weight") continue;
+    if (t.needReweigh) {
+      x.needReweigh = y.needReweigh = true;
+      y.note = `Сумма и вес равны: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
+    }
+    if (t.how === "reweigh") y.note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
+    else if (t.how === "unbeaten" && !t.needReweigh) y.note = `Равенство: ${nx} выше по лучшему месту на одной из рук.`;
+    else if (t.how === "none") {
+      y.place = x.place;
+      if (!t.needReweigh)
+        y.note =
+          x.place === 3
+            ? `В результате двоеборья два 3-х места: ${nx} и ${ny} (п. 2.7 Правил).`
+            : `Полное равенство: ${nx} и ${ny} делят ${x.place} место.`;
+    }
+  }
+  return rows;
+}
+
+export interface TeamHand {
+  points: number;
+  medals: [number, number, number];
+}
+export interface TeamRow {
+  team: string;
+  place: number;
+  right: TeamHand;
+  left: TeamHand;
+  total: number;
+  medals: [number, number, number];
+  members: number;
+}
+
+/** Командный зачёт: очки за места участников команды на каждой руке. */
+export function teamStandings(
+  brackets: Bracket[],
+  matches: Match[],
+  athletes: Record<string, Athlete>,
+  pts: number[],
+): TeamRow[] {
+  const map: Record<string, TeamRow & { ids: Set<string> }> = {};
+  const empty = (): TeamHand => ({ points: 0, medals: [0, 0, 0] });
+  for (const b of brackets) {
+    for (const r of places(b, matches, athletes)) {
+      const team = (athletes[r.id]?.club || "").trim();
+      if (!team) continue;
+      const k = team.toLowerCase();
+      const row = (map[k] ||= { team, place: 0, right: empty(), left: empty(), total: 0, medals: [0, 0, 0], members: 0, ids: new Set() });
+      row.ids.add(r.id);
+      const h = row[b.hand];
+      const p = pointsFor(r.place, pts);
+      h.points += p;
+      row.total += p;
+      if (r.place <= 3) {
+        h.medals[r.place - 1]++;
+        row.medals[r.place - 1]++;
+      }
+    }
+  }
+  const rows = Object.values(map).map(({ ids, ...r }) => ({ ...r, members: ids.size }));
+  const cmp = (x: TeamRow, y: TeamRow) =>
+    y.total - x.total || y.medals[0] - x.medals[0] || y.medals[1] - x.medals[1] || y.medals[2] - x.medals[2];
+  rows.sort(cmp);
+  rows.forEach((r, i) => (r.place = i > 0 && cmp(rows[i - 1], r) === 0 ? rows[i - 1].place : i + 1));
+  return rows;
 }

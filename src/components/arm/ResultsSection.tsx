@@ -1,13 +1,18 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, fmtKg, places } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, fmtKg, places, pointsFor, tMode, tPoints } from "@/lib/arm";
+import ReweighInput from "./ReweighInput";
+import BiathlonProtocol from "./BiathlonProtocol";
+import TeamProtocol from "./TeamProtocol";
 import { cn } from "@/lib/utils";
 
 export default function ResultsSection() {
   const { brackets, matches, amap, tournament } = useStore();
   const classMap = useClassMap();
-  const [mode, setMode] = useState<"places" | "matches">("places");
+  const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team">("places");
+  const pts = tPoints(tournament);
+  const scoring = tMode(tournament);
   const [onlyDone, setOnlyDone] = useState(false);
 
   const list = useMemo(
@@ -33,6 +38,14 @@ export default function ResultsSection() {
         <button className={cn("pill", mode === "matches" && "pill-on")} onClick={() => setMode("matches")}>
           Ход схваток
         </button>
+        {scoring === "biathlon" && (
+          <button className={cn("pill", mode === "biathlon" && "pill-on")} onClick={() => setMode("biathlon")}>
+            Двоеборье
+          </button>
+        )}
+        <button className={cn("pill", mode === "team" && "pill-on")} onClick={() => setMode("team")}>
+          Командный зачёт
+        </button>
         <button className={cn("pill", onlyDone && "pill-on")} onClick={() => setOnlyDone((v) => !v)}>
           Только завершённые
         </button>
@@ -47,14 +60,24 @@ export default function ResultsSection() {
           {dateStr} · {tournament.place}
         </div>
         <div className="mt-2 text-base font-semibold">
-          {mode === "places" ? "Протокол итоговых мест" : "Протокол хода соревнований"}
+          {mode === "places"
+            ? "Протокол итоговых мест"
+            : mode === "matches"
+              ? "Протокол хода соревнований"
+              : mode === "biathlon"
+                ? "Протокол двоеборья"
+                : "Командный протокол"}
         </div>
       </div>
 
-      {!list.length && (
+      {mode === "biathlon" && <BiathlonProtocol onlyDone={onlyDone} />}
+      {mode === "team" && <TeamProtocol onlyDone={onlyDone} />}
+
+      {(mode === "places" || mode === "matches") && !list.length && (
         <div className="win flex-1 items-center justify-center p-10 text-panel-muted">Пока нет проведённых жеребьёвок</div>
       )}
 
+      {(mode === "places" || mode === "matches") && (
       <div className="grid gap-4 xl:grid-cols-2 print:block">
         {list.map((b) => {
           const cls = classMap[b.classKey];
@@ -88,14 +111,16 @@ export default function ResultsSection() {
                       <th className="px-2 py-2 font-normal">участник</th>
                       <th className="px-2 py-2 font-normal">клуб · город</th>
                       <th className="px-2 py-2 font-normal">вес</th>
-                      <th className="px-4 py-2 text-right font-normal">п–п</th>
+                      <th className="px-2 py-2 text-right font-normal">п–п</th>
+                      <th className="px-4 py-2 text-right font-normal">очки</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r) => {
                       const a = amap[r.id];
                       return (
-                        <tr key={r.id} className="border-b border-line/60 last:border-0 print:border-black/40">
+                        <Fragment key={r.id}>
+                        <tr className="border-b border-line/60 last:border-0 print:border-black/40">
                           <td className="px-4 py-2">
                             <span
                               className={cn(
@@ -112,11 +137,25 @@ export default function ResultsSection() {
                           <td className="px-2 py-2 text-panel-muted print:text-black">
                             {a?.club} · {a?.city}
                           </td>
-                          <td className="px-2 py-2 font-mono text-panel-muted print:text-black">{fmtKg(a?.weight)}</td>
-                          <td className="px-4 py-2 text-right font-mono">
+                          <td className="px-2 py-2 font-mono text-panel-muted print:text-black">
+                            {fmtKg(a?.weight)}
+                            {a?.reweigh != null && <span className="ml-1 text-xs">({fmtKg(a.reweigh)})</span>}
+                            {r.needReweigh && <ReweighInput id={r.id} />}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono">
                             {r.wins}–{r.losses}
                           </td>
+                          <td className="px-4 py-2 text-right font-mono">{b.done ? pointsFor(r.place, pts) : "—"}</td>
                         </tr>
+                        {r.note && (
+                          <tr className="border-b border-line/60 print:border-black/40">
+                            <td />
+                            <td colSpan={5} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
+                              {r.note}
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -149,6 +188,7 @@ export default function ResultsSection() {
           );
         })}
       </div>
+      )}
 
       <div className="hidden grid-cols-2 gap-10 pt-10 text-sm print:grid">
         <div>Главный судья ____________ {tournament.chiefJudge}</div>
@@ -156,7 +196,7 @@ export default function ResultsSection() {
       </div>
 
       <p className="text-xs text-foreground/70 print:hidden">
-        Места считаются по стандартным правилам системы «до двух поражений»: кто выбыл позже — выше; при равенстве — меньше поражений, больше побед, затем меньший собственный вес.
+        Места — как в ArmScorer: кто выбыл позже — выше; выбывшие в одном туре — по меньшему весу; при равном весе — перевзвешивание (п. 2.4 Правил), затем выше тот, кто дольше шёл без поражений. Очки за места: {pts.join(", ")} (меняются в «Категориях»).
       </p>
     </div>
   );
