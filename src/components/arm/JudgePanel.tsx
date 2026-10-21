@@ -37,6 +37,10 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
       if (e.key === "2" || e.key === "ArrowRight") decide(current, current.b);
       if (e.key === "t" || e.key === "T" || e.key === "е" || e.key === "Е") timers.start(current.table, "rest30");
       if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") timers.start(current.table, "rest120");
+      if (e.key === "u" || e.key === "U" || e.key === "г" || e.key === "Г") {
+        e.preventDefault();
+        window.dispatchEvent(new Event(`custom-rest-${current.table}`));
+      }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);

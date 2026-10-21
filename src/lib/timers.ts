@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 const KEY = "armsport-timers";
 
 export interface TableTimer {
-  kind: "rest30" | "rest120";
+  kind: "rest30" | "rest120" | "custom";
   seconds: number;
   endsAt: number;
   label: string;
@@ -51,9 +51,10 @@ export function useTimers() {
     return () => clearInterval(t);
   }, [active]);
 
-  const start = useCallback((table: number, kind: TableTimer["kind"]) => {
-    const p = TIMER_PRESETS.find((x) => x.kind === kind)!;
-    const next = { ...read(), [table]: { kind, seconds: p.seconds, endsAt: Date.now() + p.seconds * 1000, label: p.hint } };
+  const start = useCallback((table: number, kind: TableTimer["kind"], customSec?: number) => {
+    const p = TIMER_PRESETS.find((x) => x.kind === kind);
+    const seconds = kind === "custom" ? Math.max(5, Math.min(3600, Math.round(customSec ?? 60))) : p!.seconds;
+    const next = { ...read(), [table]: { kind, seconds, endsAt: Date.now() + seconds * 1000, label: p?.hint ?? "Свой отдых" } };
     write(next);
     setAll(next);
     setNow(Date.now());
@@ -78,6 +79,30 @@ export function useTimers() {
   );
 
   return { start, stop, get };
+}
+
+const CKEY = "armsport-custom-rest";
+export const lastCustomRest = () => {
+  const n = parseInt(localStorage.getItem(CKEY) || "", 10);
+  return Number.isFinite(n) && n > 0 ? n : 60;
+};
+export const saveCustomRest = (s: number) => localStorage.setItem(CKEY, String(s));
+
+/** «60 секунд», «2 минуты», «1 мин 30 сек». */
+export function restLabel(sec: number) {
+  if (sec < 60) return `${sec} ${plural(sec, "секунда", "секунды", "секунд")}`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (!s) return `${m} ${plural(m, "минута", "минуты", "минут")}`;
+  return `${m} мин ${s} сек`;
+}
+function plural(n: number, one: string, few: string, many: string) {
+  const a = n % 100;
+  const b = n % 10;
+  if (a >= 11 && a <= 14) return many;
+  if (b === 1) return one;
+  if (b >= 2 && b <= 4) return few;
+  return many;
 }
 
 export const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
