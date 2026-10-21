@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
 import { HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
@@ -439,6 +439,7 @@ function SystemCard() {
             </button>
           ))}
         </div>
+        <ToleranceInput value={tol} onChange={(v) => setTournament({ tolerance: v })} />
 
         <button
           className={cn("pill mt-1 justify-start", tournament.requireAdmit && "pill-on")}
@@ -451,5 +452,52 @@ function SystemCard() {
         </p>
       </div>
     </div>
+  );
+}
+
+/** Провес вручную — по Положению турнира (п. 8.8 допускает своё значение). */
+function ToleranceInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const fmt = (v: number) => (v ? String(v).replace(".", ",") : "");
+  const [txt, setTxt] = useState(fmt(value));
+  const [err, setErr] = useState("");
+  useEffect(() => setTxt(fmt(value)), [value]);
+  const commit = () => {
+    const t = txt.trim().replace(",", ".");
+    if (!t) {
+      setErr("");
+      if (value !== 0) onChange(0);
+      return;
+    }
+    const v = Number(t);
+    if (!Number.isFinite(v) || v < 0 || v > 2) {
+      setErr("От 0 до 2 кг");
+      return;
+    }
+    setErr("");
+    const r = Math.round(v * 1000) / 1000;
+    if (r !== value) onChange(r);
+    setTxt(fmt(r));
+  };
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm">
+      Свой провес:
+      <input
+        className={cn("field !h-9 !w-24 !px-3 font-mono", err && "!border-corner-red")}
+        inputMode="decimal"
+        placeholder="0,2"
+        value={txt}
+        onChange={(e) => setTxt(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      />
+      кг
+      {err ? (
+        <span className="text-xs text-corner-red">{err}</span>
+      ) : (
+        <span className="text-xs text-panel-muted">
+          {value ? `спортсмен до 80 кг допускается с весом до ${(80 + value).toFixed(3).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",")} кг` : "Enter — сохранить"}
+        </span>
+      )}
+    </label>
   );
 }

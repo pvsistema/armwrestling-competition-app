@@ -5,6 +5,8 @@ import { ProtocolPart, buildProtocol } from "@/lib/protocolModel";
 import { handsInOrder } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { savedText, warmFolder } from "@/lib/saveFolder";
+import FolderButton from "./FolderButton";
 
 type Fmt = "pdf" | "docx" | "xlsx";
 
@@ -32,12 +34,11 @@ export default function ExportButtons({ onlyDone }: { onlyDone: boolean }) {
     }
     setBusy(fmt);
     try {
+      await warmFolder();
       const m = await import("@/lib/exportProtocol");
       const logo = store.tournament.showLogo ?? true;
-      if (fmt === "pdf") await m.exportPdf(doc, logo);
-      if (fmt === "docx") await m.exportWord(doc, logo);
-      if (fmt === "xlsx") await m.exportExcel(doc);
-      toast({ title: "Протокол сохранён", description: `${doc.fileBase}.${fmt}` });
+      const r = fmt === "pdf" ? await m.exportPdf(doc, logo) : fmt === "docx" ? await m.exportWord(doc, logo) : await m.exportExcel(doc);
+      toast({ title: "Протокол сохранён", description: r ? savedText(r) : `${doc.fileBase}.${fmt}` });
     } catch (e) {
       toast({ title: "Не удалось сохранить протокол", description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -72,6 +73,7 @@ export default function ExportButtons({ onlyDone }: { onlyDone: boolean }) {
       {btn("pdf", "PDF", "FileText")}
       {btn("docx", "Word", "FileType")}
       {btn("xlsx", "Excel", "FileSpreadsheet")}
+      <FolderButton />
     </div>
   );
 }

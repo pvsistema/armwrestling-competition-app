@@ -3,14 +3,17 @@ import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
 import { readTournamentFile, saveTournamentFile } from "@/lib/tournamentFile";
 import { toast } from "@/hooks/use-toast";
+import { savedText, warmFolder } from "@/lib/saveFolder";
+import FolderButton from "./FolderButton";
 
 export default function TournamentFileButtons() {
   const { exportData, importData } = useStore();
   const input = useRef<HTMLInputElement>(null);
 
-  const onSave = () => {
-    saveTournamentFile(exportData());
-    toast({ title: "Турнир сохранён в файл", description: "Перенесите файл на другой компьютер и откройте его там." });
+  const onSave = async () => {
+    await warmFolder();
+    const r = await saveTournamentFile(exportData());
+    toast({ title: "Турнир сохранён в файл", description: `${savedText(r)}. Перенесите файл на другой компьютер и откройте его там.` });
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +57,7 @@ export default function TournamentFileButtons() {
       <button className="pill" onClick={onTest} title="Турнир с готовыми спорными случаями для проверки программы">
         <Icon name="FlaskConical" size={15} /> Тестовый турнир
       </button>
+      <FolderButton />
       <input ref={input} type="file" accept=".json,application/json" className="hidden" onChange={onFile} />
     </>
   );

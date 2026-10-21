@@ -5,6 +5,7 @@ import { buildProtocol } from "@/lib/protocolModel";
 import { Hand } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Saved, savedText, warmFolder } from "@/lib/saveFolder";
 
 type Act = "print" | "pdf" | "docx" | "xlsx";
 
@@ -32,15 +33,17 @@ export default function HandProtocolActions({
     }
     setBusy(act);
     try {
+      if (act !== "print") await warmFolder();
       const m = await import("@/lib/exportProtocol");
       const logo = store.tournament.showLogo ?? true;
-      if (act === "print") await m.exportPdf(doc, logo, { print: true });
-      if (act === "pdf") await m.exportPdf(doc, logo);
-      if (act === "docx") await m.exportWord(doc, logo);
-      if (act === "xlsx") await m.exportExcel(doc);
+      let r: Saved | null = null;
+      if (act === "print") r = await m.exportPdf(doc, logo, { print: true });
+      if (act === "pdf") r = await m.exportPdf(doc, logo);
+      if (act === "docx") r = await m.exportWord(doc, logo);
+      if (act === "xlsx") r = await m.exportExcel(doc);
       toast({
         title: act === "print" ? "Протокол открыт для печати" : "Протокол сохранён",
-        description: act === "print" ? doc.fileBase : `${doc.fileBase}.${act}`,
+        description: r ? savedText(r) : doc.fileBase,
       });
       onDone?.();
     } catch (e) {

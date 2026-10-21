@@ -1,5 +1,6 @@
 import { Hand, handsInOrder, Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
 import { fmtDateRange } from "./protocolModel";
+import { FOLDERS, saveFile } from "./saveFolder";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -186,13 +187,5 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
     pdf.text(`стр. ${p} из ${pages}`, W - M, H - 6, { align: "right" });
   }
 
-  const blob = pdf.output("blob");
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${fileBase}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return saveFile(pdf.output("blob"), `${fileBase}.pdf`, FOLDERS.sheets);
 }

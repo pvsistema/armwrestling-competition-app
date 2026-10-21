@@ -18,6 +18,7 @@ import {
   teamStandings,
 } from "./arm";
 import type { State } from "./store";
+import { FOLDERS } from "./saveFolder";
 
 export type Align = "left" | "center" | "right";
 export interface Column {
@@ -46,6 +47,8 @@ export interface ProtocolDoc {
   requirements?: string;
   sections: Section[];
   fileBase: string;
+  /** Подпапка в папке турнира. */
+  folder?: string;
 }
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
@@ -307,6 +310,7 @@ export function buildProtocol(
     info,
     requirements: t.requirements,
     sections,
+    folder: FOLDERS[part],
     fileBase: (`Протокол ${title}${partFile}`).replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 80),
   };
 }

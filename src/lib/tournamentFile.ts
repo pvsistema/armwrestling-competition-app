@@ -1,22 +1,23 @@
 import type { State } from "./store";
+import { FOLDERS, saveFile } from "./saveFolder";
 
 const FORMAT = "armsport-tournament";
 const VERSION = 1;
 
 export function saveTournamentFile(state: State) {
+  return saveFile(tournamentBlob(state), tournamentFileName(state), FOLDERS.backup);
+}
+
+export function tournamentBlob(state: State) {
   const payload = { format: FORMAT, version: VERSION, savedAt: new Date().toISOString(), data: state };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  return new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+}
+
+export function tournamentFileName(state: State) {
   const date = new Date();
   const stamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
   const base = (state.tournament.name || "turnir").replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 60) || "turnir";
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${base}_${stamp}.armsport.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return `${base}_${stamp}.armsport.json`;
 }
 
 export async function readTournamentFile(file: File): Promise<State> {

@@ -2,16 +2,7 @@ import type { ProtocolDoc, Section } from "./protocolModel";
 
 const BASE = import.meta.env.BASE_URL;
 
-function download(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+import { Saved, saveFile } from "./saveFolder";
 
 async function fetchBuf(path: string) {
   const r = await fetch(`${BASE}${path}`);
@@ -29,7 +20,7 @@ function toBase64(buf: ArrayBuffer) {
 const officialLine = (o: [string, string]) => `${o[0]} ________________ ${o[1]}`;
 
 /* ---------------- PDF ---------------- */
-export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { print?: boolean } = {}) {
+export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { print?: boolean } = {}): Promise<Saved | null> {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -181,17 +172,17 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
     const url = URL.createObjectURL(pdf.output("blob"));
     const w = window.open(url, "_blank");
     if (!w) {
-      download(pdf.output("blob"), `${doc.fileBase}.pdf`);
-      throw new Error("Браузер заблокировал окно печати — файл PDF сохранён, откройте и распечатайте его.");
+      const r = await saveFile(pdf.output("blob"), `${doc.fileBase}.pdf`, doc.folder);
+      throw new Error(`Браузер заблокировал окно печати — PDF сохранён (${r.path}), откройте и распечатайте его.`);
     }
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    return;
+    return null;
   }
-  download(pdf.output("blob"), `${doc.fileBase}.pdf`);
+  return saveFile(pdf.output("blob"), `${doc.fileBase}.pdf`, doc.folder);
 }
 
 /* ---------------- Word ---------------- */
-export async function exportWord(doc: ProtocolDoc, withLogo: boolean) {
+export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<Saved> {
   const d = await import("docx");
   const {
     Document,
@@ -327,11 +318,11 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean) {
       },
     ],
   });
-  download(await Packer.toBlob(docx), `${doc.fileBase}.docx`);
+  return saveFile(await Packer.toBlob(docx), `${doc.fileBase}.docx`, doc.folder);
 }
 
 /* ---------------- Excel ---------------- */
-export async function exportExcel(doc: ProtocolDoc) {
+export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = "Армспорт";
@@ -406,5 +397,5 @@ export async function exportExcel(doc: ProtocolDoc) {
     }
   }
   const buf = await wb.xlsx.writeBuffer();
-  download(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${doc.fileBase}.xlsx`);
+  return saveFile(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${doc.fileBase}.xlsx`, doc.folder);
 }

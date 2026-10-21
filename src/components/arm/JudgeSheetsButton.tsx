@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { savedText, warmFolder } from "@/lib/saveFolder";
 import { Hand, handsInOrder } from "@/lib/arm";
 
 /** Выгрузка стартовых листов и хода схваток для судей на столы. */
@@ -30,12 +31,13 @@ export default function JudgeSheetsButton({ currentKey }: { currentKey: string |
     }
     setBusy(true);
     try {
+      await warmFolder();
       const m = await import("@/lib/judgeSheets");
       const suffix =
         (scope === "all" ? "все" : scope === "current" ? "категория" : `стол-${scope}`) +
         (scope !== "current" && hand !== "both" ? (hand === "left" ? " — левая" : " — правая") : "");
-      await m.exportJudgeSheets({ tournament, brackets, matches, amap, classMap }, list, `Листы судей — ${suffix}`);
-      toast({ title: "Листы для судей сохранены", description: `${list.length} ${list.length === 1 ? "категория" : "категорий"}, каждая на отдельной странице` });
+      const r = await m.exportJudgeSheets({ tournament, brackets, matches, amap, classMap }, list, `Листы судей — ${suffix}`);
+      toast({ title: "Листы для судей сохранены", description: `${list.length} ${list.length === 1 ? "категория" : "категорий"} · ${savedText(r)}` });
     } catch (e) {
       toast({ title: "Не удалось сохранить", description: (e as Error).message, variant: "destructive" });
     } finally {
