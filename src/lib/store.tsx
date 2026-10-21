@@ -11,6 +11,7 @@ import {
   classOf,
   tournamentYear,
   weightClasses,
+  HAND_ORDER,
 } from "./arm";
 import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
 
@@ -39,7 +40,7 @@ function drawAllInto(s: State): State {
   const existing = new Set(s.brackets.map((b) => b.key));
   let next = { ...s };
   const classes = weightClasses(s.groups);
-  const keys = classes.flatMap((c) => (["right", "left"] as Hand[]).map((h) => bracketKey(c.key, h)));
+  const keys = classes.flatMap((c) => HAND_ORDER.map((h) => bracketKey(c.key, h)));
   let tableIdx = s.brackets.length;
   for (const k of keys) {
     if (!byKey[k] || existing.has(k)) continue;

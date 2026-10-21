@@ -145,7 +145,7 @@ export function buildProtocol(s: State, classMap: Record<string, WeightClass>, o
     });
   } else {
     [...used]
-      .sort((a, b) => order(a) - order(b) || a.hand.localeCompare(b.hand) * -1)
+      .sort((a, b) => order(a) - order(b) || a.hand.localeCompare(b.hand))
       .forEach((b) => {
         const rows = places(b, s.matches, amap);
         sections.push({

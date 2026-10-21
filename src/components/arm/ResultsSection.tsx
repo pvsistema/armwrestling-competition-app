@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 export default function ResultsSection() {
   const { brackets, matches, amap, tournament, athletes } = useStore();
   const classMap = useClassMap();
-  const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team" | "judges">("places");
   const pts = tPoints(tournament);
   const scoring = tMode(tournament);
+  const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team" | "judges">(scoring === "biathlon" ? "biathlon" : "places");
   const [onlyDone, setOnlyDone] = useState(false);
   const [withJudges, setWithJudges] = useState(true);
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, Hand, Match, bracketKey, classOf, standings, surname, tournamentYear, weightClasses } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, HAND_ORDER, Hand, Match, bracketKey, classOf, standings, surname, tournamentYear, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 
 export default function BracketSection() {
@@ -22,7 +22,7 @@ export default function BracketSection() {
   const keys = useMemo(
     () =>
       weightClasses(groups)
-        .flatMap((c) => (["right", "left"] as Hand[]).map((h) => bracketKey(c.key, h)))
+        .flatMap((c) => HAND_ORDER.map((h) => bracketKey(c.key, h)))
         .filter((k) => pools[k] || brackets.some((b) => b.key === k)),
     [groups, pools, brackets],
   );

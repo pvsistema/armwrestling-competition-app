@@ -115,10 +115,11 @@ export const JUDGE_CATEGORIES = ["ВК", "1 категория", "2 катего
 export type ScoringMode = "hands" | "biathlon";
 export const DEFAULT_POINTS = [25, 17, 9, 5, 3, 2];
 export const MODE_LABEL: Record<ScoringMode, string> = {
-  hands: "Каждая рука отдельно (WAF)",
   biathlon: "Двоеборье (ФАР)",
+  hands: "Каждая рука отдельно (WAF)",
 };
-export const tMode = (t: Tournament): ScoringMode => t.mode ?? "hands";
+export const tMode = (t: Tournament): ScoringMode => t.mode ?? "biathlon";
+export const HAND_ORDER: Hand[] = ["left", "right"];
 export const tPoints = (t: Tournament): number[] => (t.points?.length ? t.points : DEFAULT_POINTS);
 export const pointsFor = (place: number, pts: number[]) => pts[place - 1] ?? 0;
 
@@ -422,7 +423,7 @@ export function biathlon(
   pts: number[],
 ): BiathlonRow[] {
   const map: Record<string, BiathlonRow> = {};
-  for (const hand of ["right", "left"] as Hand[]) {
+  for (const hand of HAND_ORDER) {
     const b = brackets.find((x) => x.classKey === classKey && x.hand === hand);
     if (!b) continue;
     for (const r of places(b, matches, athletes)) {

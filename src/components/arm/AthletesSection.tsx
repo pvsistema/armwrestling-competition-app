@@ -14,7 +14,7 @@ const EMPTY = {
   city: "",
   rank: "",
   district: "",
-  hands: ["right", "left"] as Hand[],
+  hands: ["left", "right"] as Hand[],
 };
 
 export default function AthletesSection() {
@@ -140,7 +140,7 @@ export default function AthletesSection() {
             </Field>
             <Field label="Руки" error={err.hands}>
               <div className="flex gap-2">
-                {(["right", "left"] as Hand[]).map((h) => (
+                {(["left", "right"] as Hand[]).map((h) => (
                   <button
                     type="button"
                     key={h}
@@ -288,7 +288,7 @@ function Row({
       <td className="px-2 py-2.5 text-panel-muted">{classLabel}</td>
       <td className="px-2 py-2.5">
         <div className="flex gap-1">
-          {(["right", "left"] as Hand[]).map((h) => (
+          {(["left", "right"] as Hand[]).map((h) => (
             <button
               key={h}
               onClick={() => onHands(a.hands.includes(h) ? a.hands.filter((x) => x !== h) : [...a.hands, h])}
