@@ -1,111 +1,77 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import AppHeader, { Section } from "@/components/arm/AppHeader";
+import JudgePanel from "@/components/arm/JudgePanel";
+import AthletesSection from "@/components/arm/AthletesSection";
+import ClassesSection from "@/components/arm/ClassesSection";
+import BracketSection from "@/components/arm/BracketSection";
+import ResultsSection from "@/components/arm/ResultsSection";
+import BoardSection from "@/components/arm/BoardSection";
+import Icon from "@/components/ui/icon";
+import { StoreProvider, useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
-import { useEffect, useRef } from "react";
+function Shell() {
+  const [section, setSection] = useState<Section>("judge");
+  const [table, setTable] = useState<number | "all">("all");
+  const { tournament, resetDemo, resetEmpty } = useStore();
 
-// Dotted cube that tumbles: 7×7×7 points spin around an in-plane axis and,
-// every half turn, face the viewer for an instant as a flat square.
-const SIZE = 300;
-const N = 7;
-const CUBE = 56;
-const T = 5;
-const AXIS = (20 * Math.PI) / 180;
-const EASE = 0.6;
+  const tables: (number | "all")[] = ["all", ...Array.from({ length: tournament.tables }, (_, i) => i + 1)];
 
-const DOTS: [number, number, number][] = [];
-for (let i = 0; i < N; i++)
-  for (let j = 0; j < N; j++)
-    for (let k = 0; k < N; k++) {
-      const c = (v: number) => (v / (N - 1)) * 2 - 1;
-      DOTS.push([c(i), c(j), c(k)]);
-    }
-
-const Cube = () => {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = SIZE * dpr;
-    canvas.height = SIZE * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const kx = Math.cos(AXIS), ky = Math.sin(AXIS);
-    const pts = DOTS.map(() => ({ x: 0, y: 0, d: 0 }));
-    let raf = 0;
-    let t = still ? 0.6 : 0;
-    let last = performance.now();
-
-    const draw = (now: number) => {
-      t += still ? 0 : Math.min(0.05, (now - last) / 1000);
-      last = now;
-      const u = (t % T) / T;
-      // Slower in 3D, faster through the flat square: it never stops.
-      const half = 2 * u;
-      const angle = Math.PI * (half + (EASE / (2 * Math.PI)) * Math.sin(2 * Math.PI * half));
-      const spin = (Math.PI / 2) * u;
-      const persp = 0.6 * Math.abs(Math.sin(angle));
-      const c = Math.cos(angle), s = Math.sin(angle);
-      const cs = Math.cos(spin), ss = Math.sin(spin);
-      DOTS.forEach(([x, y, z], i) => {
-        const dot = kx * x + ky * y;
-        const rx = x * c + ky * z * s + kx * dot * (1 - c);
-        const ry = y * c - kx * z * s + ky * dot * (1 - c);
-        const rz = z * c + (kx * y - ky * x) * s;
-        const f = 4 / (4 - rz * persp);
-        pts[i].x = SIZE / 2 + (rx * cs - ry * ss) * CUBE * f;
-        pts[i].y = SIZE / 2 - (rx * ss + ry * cs) * CUBE * f;
-        pts[i].d = (rz + 1.8) / 3.6;
-      });
-      ctx.clearRect(0, 0, SIZE, SIZE);
-      [...pts].sort((a, b) => a.d - b.d).forEach(({ x, y, d }) => {
-        const a = 0.15 + 0.8 * d;
-        const r = 1.3 + d;
-        ctx.shadowBlur = 2.5 * r;
-        ctx.shadowColor = `rgba(255,255,255,${(a * 0.6).toFixed(3)})`;
-        ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      if (!still) raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  return <canvas ref={ref} aria-hidden className="relative h-[300px] w-[300px]" />;
-};
-
-const Index = () => {
-  // Tell the editor this is only the placeholder, so it hides the editing
-  // tools: there is nothing to edit yet. Sent after load (the editor resets
-  // the flag on every load) and withdrawn once the page is replaced.
-  useEffect(() => {
-    const say = (placeholder: boolean) =>
-      window.parent?.postMessage({ type: "pp-placeholder", placeholder }, "*");
-    const onLoad = () => say(true);
-    if (document.readyState === "complete") say(true);
-    else window.addEventListener("load", onLoad);
-    return () => {
-      window.removeEventListener("load", onLoad);
-      say(false);
-    };
-  }, []);
+  const right = (
+    <>
+      {section === "judge" && (
+        <div className="flex rounded-full bg-foreground/10 p-1">
+          {tables.map((t) => (
+            <button
+              key={String(t)}
+              onClick={() => setTable(t)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[0.9em] font-medium transition-colors",
+                table === t ? "bg-foreground text-background" : "hover:bg-foreground/10",
+              )}
+            >
+              {t === "all" ? "Все столы" : `Стол ${t}`}
+            </button>
+          ))}
+        </div>
+      )}
+      <button className="pill" onClick={() => setSection("results")}>
+        <Icon name="Printer" size={16} /> Печать
+      </button>
+    </>
+  );
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-[#1A1A1A] px-6 text-center">
-      {/* Dot grid backdrop, fading towards the edges. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:32px_32px] bg-center [mask-image:radial-gradient(ellipse_at_center,#000_40%,transparent_100%)]"
-      />
-      <Cube />
-      <p className="relative mt-1 text-base font-medium text-white">Здесь появится ваш проект</p>
-      <p className="relative mt-2 max-w-[340px] text-sm text-[#969696]">Подождите пару минут</p>
+    <div className="min-h-screen p-2 pb-6 sm:px-3 print:bg-white print:p-0">
+      <div className="flex min-h-[calc(100vh-32px)] flex-col gap-4 rounded-stage bg-background px-4 pb-7 pt-5 text-foreground sm:px-10 print:min-h-0 print:rounded-none print:bg-white print:p-0 print:text-black">
+        <AppHeader section={section} onSection={setSection} right={right} />
+        <main className="flex flex-1 flex-col gap-4">
+          {section === "judge" && <JudgePanel table={table} onGoBracket={() => setSection("bracket")} />}
+          {section === "athletes" && <AthletesSection />}
+          {section === "classes" && <ClassesSection />}
+          {section === "bracket" && <BracketSection />}
+          {section === "results" && <ResultsSection />}
+          {section === "board" && <BoardSection />}
+          {section === "athletes" && (
+            <div className="flex flex-wrap gap-2">
+              <button className="pill" onClick={() => confirm("Загрузить пример турнира заново? Текущие данные будут заменены.") && resetDemo()}>
+                <Icon name="Sparkles" size={15} /> Загрузить пример
+              </button>
+              <button className="pill" onClick={() => confirm("Начать новый турнир с пустым списком?") && resetEmpty()}>
+                <Icon name="FilePlus" size={15} /> Новый турнир
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
-};
+}
 
-export default Index;
+export default function Index() {
+  return (
+    <StoreProvider>
+      <Shell />
+    </StoreProvider>
+  );
+}

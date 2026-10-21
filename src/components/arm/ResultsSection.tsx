@@ -1,0 +1,163 @@
+import { useMemo, useState } from "react";
+import Icon from "@/components/ui/icon";
+import { useClassMap, useStore } from "@/lib/store";
+import { GROUP_LABEL, HAND_LABEL, fmtKg, places } from "@/lib/arm";
+import { cn } from "@/lib/utils";
+
+export default function ResultsSection() {
+  const { brackets, matches, amap, tournament } = useStore();
+  const classMap = useClassMap();
+  const [mode, setMode] = useState<"places" | "matches">("places");
+  const [onlyDone, setOnlyDone] = useState(false);
+
+  const list = useMemo(
+    () =>
+      brackets
+        .filter((b) => !onlyDone || b.done)
+        .slice()
+        .sort((a, b) => a.classKey.localeCompare(b.classKey) || a.hand.localeCompare(b.hand)),
+    [brackets, onlyDone],
+  );
+
+  const dateStr = tournament.date
+    ? new Date(tournament.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+
+  return (
+    <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <h2 className="mr-auto text-[28px] font-medium tracking-tight md:text-[34px]">Итоговые протоколы</h2>
+        <button className={cn("pill", mode === "places" && "pill-on")} onClick={() => setMode("places")}>
+          Места
+        </button>
+        <button className={cn("pill", mode === "matches" && "pill-on")} onClick={() => setMode("matches")}>
+          Ход схваток
+        </button>
+        <button className={cn("pill", onlyDone && "pill-on")} onClick={() => setOnlyDone((v) => !v)}>
+          Только завершённые
+        </button>
+        <button className="btn-blue" onClick={() => window.print()}>
+          <Icon name="Printer" size={17} /> Печать
+        </button>
+      </div>
+
+      <div className="hidden text-center print:block">
+        <div className="text-xl font-bold">{tournament.name}</div>
+        <div className="text-sm">
+          {dateStr} · {tournament.place}
+        </div>
+        <div className="mt-2 text-base font-semibold">
+          {mode === "places" ? "Протокол итоговых мест" : "Протокол хода соревнований"}
+        </div>
+      </div>
+
+      {!list.length && (
+        <div className="win flex-1 items-center justify-center p-10 text-panel-muted">Пока нет проведённых жеребьёвок</div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-2 print:block">
+        {list.map((b) => {
+          const cls = classMap[b.classKey];
+          const rows = places(b, matches, amap);
+          const own = matches.filter((m) => m.key === b.key).sort((x, y) => x.round - y.round || x.order - y.order);
+          return (
+            <div key={b.key} className="win print:mb-6 print:break-inside-avoid print:rounded-none print:bg-white print:text-black">
+              <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 print:border-black print:bg-white">
+                <div className="flex-1">
+                  <div className="text-lg font-medium">
+                    {cls?.groupName} · {cls?.label} · {HAND_LABEL[b.hand]} рука
+                  </div>
+                  <div className="font-mono text-xs text-panel-muted print:text-black">
+                    {b.athletes.length} участников · стол {b.table}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-1 font-mono text-[11px] print:hidden",
+                    b.done ? "bg-tip text-tip-foreground" : "bg-line text-panel-muted",
+                  )}
+                >
+                  {b.done ? "итог" : "идёт · предварительно"}
+                </span>
+              </div>
+              {mode === "places" ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left font-mono text-xs text-panel-muted print:border-black print:text-black">
+                      <th className="w-14 px-4 py-2 font-normal">место</th>
+                      <th className="px-2 py-2 font-normal">участник</th>
+                      <th className="px-2 py-2 font-normal">клуб · город</th>
+                      <th className="px-2 py-2 font-normal">вес</th>
+                      <th className="px-4 py-2 text-right font-normal">п–п</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => {
+                      const a = amap[r.id];
+                      return (
+                        <tr key={r.id} className="border-b border-line/60 last:border-0 print:border-black/40">
+                          <td className="px-4 py-2">
+                            <span
+                              className={cn(
+                                "inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-sm font-semibold print:bg-transparent print:text-black",
+                                b.done && r.place === 1 && "bg-tip text-tip-foreground",
+                                b.done && r.place === 2 && "bg-foreground/80 text-panel",
+                                b.done && r.place === 3 && "bg-frame text-tip-foreground",
+                              )}
+                            >
+                              {r.place}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 font-medium">{a?.name}</td>
+                          <td className="px-2 py-2 text-panel-muted print:text-black">
+                            {a?.club} · {a?.city}
+                          </td>
+                          <td className="px-2 py-2 font-mono text-panel-muted print:text-black">{fmtKg(a?.weight)}</td>
+                          <td className="px-4 py-2 text-right font-mono">
+                            {r.wins}–{r.losses}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left font-mono text-xs text-panel-muted print:border-black print:text-black">
+                      <th className="px-4 py-2 font-normal">тур</th>
+                      <th className="px-2 py-2 font-normal">сетка</th>
+                      <th className="px-2 py-2 font-normal">синий угол</th>
+                      <th className="px-2 py-2 font-normal">красный угол</th>
+                      <th className="px-4 py-2 font-normal">победитель</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {own.map((m) => (
+                      <tr key={m.id} className="border-b border-line/60 last:border-0 print:border-black/40">
+                        <td className="px-4 py-1.5 font-mono">{m.round}</td>
+                        <td className="px-2 py-1.5 text-panel-muted print:text-black">{GROUP_LABEL[m.group]}</td>
+                        <td className={cn("px-2 py-1.5", m.winner === m.a && "font-semibold")}>{amap[m.a]?.name}</td>
+                        <td className={cn("px-2 py-1.5", m.winner === m.b && "font-semibold")}>{amap[m.b]?.name}</td>
+                        <td className="px-4 py-1.5">{m.winner ? amap[m.winner]?.name : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden grid-cols-2 gap-10 pt-10 text-sm print:grid">
+        <div>Главный судья ____________ {tournament.chiefJudge}</div>
+        <div>Главный секретарь ____________ {tournament.secretary}</div>
+      </div>
+
+      <p className="text-xs text-foreground/70 print:hidden">
+        Места считаются по стандартным правилам системы «до двух поражений»: кто выбыл позже — выше; при равенстве — меньше поражений, больше побед, затем меньший собственный вес.
+      </p>
+    </div>
+  );
+}
