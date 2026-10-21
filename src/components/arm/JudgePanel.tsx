@@ -5,6 +5,8 @@ import { GROUP_LABEL, HAND_LABEL, Match, fmtKg, standings, surname } from "@/lib
 import { pendingQueue } from "@/lib/queue";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { TimerControls } from "./RestTimer";
+import { useTimers } from "@/lib/timers";
 
 interface Props {
   table: number | "all";
@@ -17,6 +19,7 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
   const queue = useMemo(() => pendingQueue(matches, table), [matches, table]);
   const current = queue[0];
   const [flash, setFlash] = useState<string | null>(null);
+  const timers = useTimers();
 
   const decide = (m: Match, winnerId: string) => {
     setFlash(winnerId);
@@ -32,6 +35,8 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
       if (!current) return;
       if (e.key === "1" || e.key === "ArrowLeft") decide(current, current.a);
       if (e.key === "2" || e.key === "ArrowRight") decide(current, current.b);
+      if (e.key === "t" || e.key === "T" || e.key === "е" || e.key === "Е") timers.start(current.table, "rest30");
+      if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") timers.start(current.table, "rest120");
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -130,6 +135,7 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
           </button>
         )}
       </section>
+      <TimerControls table={current.table} />
       <QueueStrip queue={queue} remaining={remaining} />
     </>
   );

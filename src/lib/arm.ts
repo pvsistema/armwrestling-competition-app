@@ -345,7 +345,7 @@ const RW = (a?: Athlete) => (a?.reweigh == null ? null : a.reweigh);
 
 type TieResult = { cmp: number; how: "weight" | "reweigh" | "unbeaten" | "none" | "other"; needReweigh: boolean };
 
-/** Разрешение равенства по ArmScorer: вес → перевзвешивание (п. 2.4) → дольше без поражений. */
+/** Разрешение равенства: вес → перевзвешивание (п. 2.4) → дольше без поражений. */
 function breakTie(a: Athlete | undefined, b: Athlete | undefined, flA: number, flB: number): TieResult {
   if (W(a) !== W(b)) return { cmp: W(a) - W(b), how: "weight", needReweigh: false };
   const ra = RW(a);

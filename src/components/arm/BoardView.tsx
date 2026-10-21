@@ -6,6 +6,7 @@ import { pendingQueue } from "@/lib/queue";
 import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
+import { TimerBoard } from "./RestTimer";
 
 const GRID: Record<number, string> = {
   1: "grid-cols-1",
@@ -98,6 +99,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           <span className="truncate text-xs text-panel-muted md:text-sm">{cur ? `${label(cur.key)} · ${GROUP_LABEL[cur.group]}` : ""}</span>
           <Icon name="Maximize2" size={16} className="ml-auto shrink-0 text-panel-muted opacity-0 transition group-hover:opacity-100" />
         </div>
+        <div className="px-3 pt-2 empty:hidden">
+          <TimerBoard table={table} size="md" sound={!!standalone} />
+        </div>
         {cur ? (
           <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
             {name(cur.a, "blue", compact ? "md" : "lg")}
@@ -147,6 +151,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
       .slice(0, 4);
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <TimerBoard table={single ? (current?.table ?? 1) : table} size="lg" sound={!!standalone} />
         {current ? (
           <div className="flex flex-1 flex-col justify-center rounded-lg border border-line bg-frame p-3">
             <div className="mb-3 flex flex-wrap items-center justify-center gap-3 text-center text-base md:text-xl">
