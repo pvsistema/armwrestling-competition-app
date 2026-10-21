@@ -19,6 +19,9 @@ function toBase64(buf: ArrayBuffer) {
 
 const officialLine = (o: [string, string]) => `${o[0]} ________________ ${o[1]}`;
 
+/** Нижняя строка листа: название турнира, место и даты. */
+export const footLine = (doc: Pick<ProtocolDoc, "title" | "placeDate">) => [doc.title, doc.placeDate].filter(Boolean).join(" · ");
+
 /* ---------------- PDF ---------------- */
 export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { print?: boolean } = {}): Promise<Saved | null> {
   const { jsPDF } = await import("jspdf");
@@ -48,7 +51,7 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
   const H = pdf.internal.pageSize.getHeight();
   const M = 12;
   const headerH = doc.subtitle ? 24 : 19;
-  const footerH = doc.officials.length > 2 ? 14 : 9;
+  const footerH = (doc.officials.length > 2 ? 14 : 9) + 5;
 
   const drawHeaderFooter = () => {
     const page = pdf.getNumberOfPages();
@@ -167,6 +170,20 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
     y += 4;
   }
   if (!doc.sections.length) drawHeaderFooter();
+  const total = pdf.getNumberOfPages();
+  const foot = footLine(doc);
+  for (let p = 1; p <= total; p++) {
+    pdf.setPage(p);
+    pdf.setDrawColor(150);
+    pdf.setLineWidth(0.2);
+    pdf.line(M, H - 7.5, W - M, H - 7.5);
+    pdf.setFont("NS", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(60);
+    pdf.text(foot, M, H - 4.5, { maxWidth: W - 2 * M - 30 });
+    pdf.text(`Лист ${p} из ${total}`, W - M, H - 4.5, { align: "right" });
+    pdf.setTextColor(0);
+  }
   if (opts.print) {
     pdf.autoPrint();
     const url = URL.createObjectURL(pdf.output("blob"));
@@ -239,13 +256,27 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
   const pairs: [string, string][][] = [];
   for (let i = 0; i < doc.officials.length; i += 2) pairs.push(doc.officials.slice(i, i + 2) as [string, string][]);
   const footer = new Footer({
-    children: pairs.map(
-      (p) =>
-        new Paragraph({
-          tabStops: [{ type: TabStopType.LEFT, position: 7600 }],
-          children: [run(officialLine(p[0]), { size: 11 }), ...(p[1] ? [new TextRun({ text: "\t", font: FONT }), run(officialLine(p[1]), { size: 11 })] : [])],
-        }),
-    ),
+    children: [
+      ...pairs.map(
+        (p) =>
+          new Paragraph({
+            tabStops: [{ type: TabStopType.LEFT, position: 7600 }],
+            children: [run(officialLine(p[0]), { size: 11 }), ...(p[1] ? [new TextRun({ text: "\t", font: FONT }), run(officialLine(p[1]), { size: 11 })] : [])],
+          }),
+      ),
+      new Paragraph({
+        spacing: { before: 120 },
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: "999999", space: 2 } },
+        tabStops: [{ type: TabStopType.RIGHT, position: 15400 }],
+        children: [
+          run(footLine(doc), { size: 8 }),
+          new TextRun({ text: "\tЛист ", font: FONT, size: 16 }),
+          new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 16 }),
+          new TextRun({ text: " из ", font: FONT, size: 16 }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: FONT, size: 16 }),
+        ],
+      }),
+    ],
   });
 
   const border = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
@@ -345,7 +376,9 @@ export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
   for (const g of groups) {
     const ws = wb.addWorksheet(g.name.slice(0, 31), {
       pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } },
-      headerFooter: { oddHeader: "&RЛист &P" },
+      headerFooter: {
+        oddFooter: `&L&"Times New Roman"&8${footLine(doc).replace(/&/g, "&&")}&R&"Times New Roman"&8Лист &P из &N`,
+      },
     });
     const ncol = Math.max(3, ...g.sections.map((s) => s.columns.length));
     const merged = (text: string, f: ReturnType<typeof font>, align: "left" | "center" = "center", h?: number) => {

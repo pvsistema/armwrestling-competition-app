@@ -144,11 +144,11 @@
       content: "";
     }
     @bottom-right {
-      content: counter(page) " / " counter(pages);
+      content: "Лист " counter(page) " из " counter(pages);
       font:
-        9pt "Times New Roman",
+        8pt "Times New Roman",
         serif;
-      color: #000;
+      color: #333;
     }
   }
   body {
