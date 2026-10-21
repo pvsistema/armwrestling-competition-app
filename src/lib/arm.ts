@@ -88,7 +88,28 @@ export interface Tournament {
   deputySecretary?: string;
   requirements?: string;
   teamBestOnly?: boolean;
+  judges?: Judge[];
 }
+
+export interface Judge {
+  id: string;
+  name: string;
+  role: string;
+  category: string;
+  city: string;
+}
+
+export const JUDGE_ROLES = [
+  "Главный судья",
+  "Заместитель главного судьи",
+  "Главный секретарь",
+  "Заместитель главного секретаря",
+  "Спортивный судья",
+  "Судья-секретарь",
+  "Судья при участниках",
+  "Судья-информатор",
+];
+export const JUDGE_CATEGORIES = ["ВК", "1 категория", "2 категория", "3 категория", "юный судья", "б/к"];
 
 export type ScoringMode = "hands" | "biathlon";
 export const DEFAULT_POINTS = [25, 17, 9, 5, 3, 2];

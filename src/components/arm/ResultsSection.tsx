@@ -5,15 +5,17 @@ import { GROUP_LABEL, HAND_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tP
 import ReweighInput from "./ReweighInput";
 import BiathlonProtocol from "./BiathlonProtocol";
 import TeamProtocol from "./TeamProtocol";
+import JudgesList from "./JudgesList";
 import { cn } from "@/lib/utils";
 
 export default function ResultsSection() {
   const { brackets, matches, amap, tournament, athletes } = useStore();
   const classMap = useClassMap();
-  const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team">("places");
+  const [mode, setMode] = useState<"places" | "matches" | "biathlon" | "team" | "judges">("places");
   const pts = tPoints(tournament);
   const scoring = tMode(tournament);
   const [onlyDone, setOnlyDone] = useState(false);
+  const [withJudges, setWithJudges] = useState(true);
 
   const list = useMemo(
     () =>
@@ -47,12 +49,24 @@ export default function ResultsSection() {
             Двоеборье
           </button>
         )}
+        <button className={cn("pill", mode === "judges" && "pill-on")} onClick={() => setMode("judges")}>
+          Судейская коллегия
+        </button>
         <button className={cn("pill", mode === "team" && "pill-on")} onClick={() => setMode("team")}>
           Командный зачёт
         </button>
         <button className={cn("pill", onlyDone && "pill-on")} onClick={() => setOnlyDone((v) => !v)}>
           Только завершённые
         </button>
+        {mode !== "judges" && (
+          <button
+            className={cn("pill", withJudges && "pill-on")}
+            onClick={() => setWithJudges((v) => !v)}
+            title="Печатать список судейской коллегии последней страницей"
+          >
+            <Icon name={withJudges ? "SquareCheck" : "Square"} size={15} /> + судьи в конце
+          </button>
+        )}
         <button className="btn-blue" onClick={() => window.print()}>
           <Icon name="Printer" size={17} /> Печать
         </button>
@@ -82,12 +96,21 @@ export default function ResultsSection() {
               ? "Протокол хода соревнований"
               : mode === "biathlon"
                 ? "Протокол двоеборья"
-                : "Командный протокол"}
+                : mode === "judges"
+                  ? "Список судейской коллегии"
+                  : "Командный протокол"}
         </div>
       </div>
 
       {mode === "biathlon" && <BiathlonProtocol onlyDone={onlyDone} />}
       {mode === "team" && <TeamProtocol onlyDone={onlyDone} />}
+      {mode === "judges" && <JudgesList />}
+      {mode !== "judges" && withJudges && (tournament.judges?.length ?? 0) > 0 && (
+        <div className="hidden print:block print:break-before-page">
+          <div className="mb-2 text-center text-base font-semibold">Список судейской коллегии</div>
+          <JudgesList printOnly />
+        </div>
+      )}
 
       {(mode === "places" || mode === "matches") && !list.length && (
         <div className="win flex-1 items-center justify-center p-10 text-panel-muted">Пока нет проведённых жеребьёвок</div>
