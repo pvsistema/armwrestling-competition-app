@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 function Shell() {
   const [section, setSection] = useState<Section>("judge");
   const [table, setTable] = useState<number | "all">("all");
-  const { tournament, resetDemo, resetEmpty } = useStore();
+  const { tournament, resetEmpty } = useStore();
 
   const tables: (number | "all")[] = ["all", ...Array.from({ length: tournament.tables }, (_, i) => i + 1)];
 
@@ -59,9 +59,6 @@ function Shell() {
             <div className="flex flex-wrap gap-2">
               <ImportAthletes />
               <TournamentFileButtons />
-              <button className="pill" onClick={() => confirm("Загрузить пример турнира заново? Текущие данные будут заменены.") && resetDemo()}>
-                <Icon name="Sparkles" size={15} /> Загрузить пример
-              </button>
               <button className="pill" onClick={() => confirm("Начать новый турнир с пустым списком?") && resetEmpty()}>
                 <Icon name="FilePlus" size={15} /> Новый турнир
               </button>

@@ -12,7 +12,7 @@ import {
   tournamentYear,
   weightClasses,
 } from "./arm";
-import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, demoAthletes } from "./demo";
+import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEMO_NAMES } from "./demo";
 
 export interface State {
   tournament: Tournament;
@@ -65,23 +65,27 @@ function drawOne(s: State, key: string, ids: string[], table: number): State {
 function initial(): State {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as State;
+    if (raw) {
+      const st = JSON.parse(raw) as State;
+      const onlyDemo = st.athletes.length > 0 && st.athletes.every((a) => LEGACY_DEMO_NAMES.has(a.name));
+      if (onlyDemo) return { ...st, athletes: [], brackets: [], matches: [], order: 1 };
+      return st;
+    }
   } catch {
     /* ignore */
   }
-  return demoState();
+  return emptyState();
 }
 
-function demoState(): State {
-  const s: State = {
+function emptyState(): State {
+  return {
     tournament: DEFAULT_TOURNAMENT,
     groups: DEFAULT_GROUPS,
-    athletes: demoAthletes(),
+    athletes: [],
     brackets: [],
     matches: [],
     order: 1,
   };
-  return drawAllInto(s);
 }
 
 interface Ctx extends State {
@@ -98,7 +102,6 @@ interface Ctx extends State {
   setWinner: (matchId: string, winnerId: string) => void;
   undo: () => void;
   canUndo: boolean;
-  resetDemo: () => void;
   resetEmpty: () => void;
   exportData: () => State;
   importData: (data: State) => void;
@@ -215,7 +218,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const resetDemo = useCallback(() => setS(demoState()), []);
   const resetEmpty = useCallback(
     () =>
       setS((p) => ({
@@ -247,7 +249,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setWinner,
     undo,
     canUndo: !!lastDecided,
-    resetDemo,
     resetEmpty,
     exportData,
     importData,
