@@ -1,8 +1,9 @@
 import { Fragment, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tPoints } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, fmtBirth, fmtKg2, places, pointsFor, tMode, tPoints } from "@/lib/arm";
 import ReweighInput from "./ReweighInput";
+import DeciderButton from "./DeciderButton";
 import BiathlonProtocol from "./BiathlonProtocol";
 import TeamProtocol from "./TeamProtocol";
 import JudgesList from "./JudgesList";
@@ -209,6 +210,7 @@ export default function ResultsSection() {
                             <td />
                             <td colSpan={6} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
                               {r.note}
+                              {r.decider && <DeciderButton classKey={b.classKey} x={r.decider} y={r.id} />}
                             </td>
                           </tr>
                         )}
@@ -235,7 +237,10 @@ export default function ResultsSection() {
                         <td className="px-2 py-1.5 text-panel-muted print:text-black">{GROUP_LABEL[m.group]}</td>
                         <td className={cn("px-2 py-1.5", m.winner === m.a && "font-semibold")}>{amap[m.a]?.name}</td>
                         <td className={cn("px-2 py-1.5", m.winner === m.b && "font-semibold")}>{amap[m.b]?.name}</td>
-                        <td className="px-4 py-1.5">{m.winner ? amap[m.winner]?.name : "—"}</td>
+                        <td className="px-4 py-1.5">
+                          {m.winner ? amap[m.winner]?.name : "—"}
+                          {m.how && m.how !== "pin" && <span className="ml-1 text-xs text-panel-muted print:text-black">({HOW_LABEL[m.how]})</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

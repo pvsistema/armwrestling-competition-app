@@ -71,6 +71,7 @@ export default function TeamProtocol({ onlyDone }: { onlyDone: boolean }) {
                   <td className="px-2 py-2">
                     <div className="font-medium">{by === "district" ? DISTRICT_FULL[r.team] ?? r.team : r.team}</div>
                     <div className="text-xs text-panel-muted print:hidden">участников: {r.members}</div>
+                    {r.tieNote && <div className="text-xs text-panel-muted print:text-black">{r.tieNote}</div>}
                   </td>
                   {mode === "hands" && (
                     <>
@@ -92,7 +93,7 @@ export default function TeamProtocol({ onlyDone }: { onlyDone: boolean }) {
         {bestOnly
           ? "От команды в каждой весовой категории засчитывается только лучший результат (как в протоколе Первенства России)."
           : "Засчитываются все участники команды."}{" "}
-        При равной сумме команды делят места (например, «4-5»).
+        При равной сумме выше команда с большим числом более высоких мест (п. 1.1 Правил); при полном совпадении — делят места («4-5»).
       </p>
     </div>
   );

@@ -14,7 +14,14 @@ export interface Athlete {
   birthDate?: string;
   rank?: string;
   district?: string;
+  upClass?: boolean;
+  absolute?: boolean;
+  admit?: { med?: boolean; ins?: boolean; mandate?: boolean };
+  out?: { reason: OutReason; at: number };
 }
+
+export type OutReason = "injury" | "withdrawn" | "disq";
+export const OUT_LABEL: Record<OutReason, string> = { injury: "травма", withdrawn: "снят", disq: "дисквалифицирован" };
 
 export const RANKS = ["б/р", "3 юн. р.", "2 юн. р.", "1 юн. р.", "3 р.", "2 р.", "1 р.", "КМС", "МС", "МСМК", "ЗМС"];
 export const DISTRICTS = ["ЦФО", "СЗФО", "ЮФО", "СКФО", "ПФО", "УФО", "СФО", "ДФО", "Город Москва", "Город Санкт-Петербург"];
@@ -38,9 +45,22 @@ export interface AgeGroup {
   ageMin: number;
   ageMax: number;
   limits: number[];
+  absolute?: boolean;
 }
 
-export type MatchGroup = "A" | "B" | "F" | "SF";
+export type MatchGroup = "A" | "B" | "F" | "SF" | "O" | "T" | "R" | "X";
+export type System = "double" | "olympic" | "roundrobin";
+export const SYSTEM_LABEL: Record<System, string> = {
+  double: "До двух поражений",
+  olympic: "Олимпийская (до первого поражения)",
+  roundrobin: "Круговая (каждый с каждым)",
+};
+export type WinHow = "pin" | "foul" | "noshow" | "wo";
+export const HOW_LABEL: Record<WinHow, string> = { pin: "", foul: "2 фола", noshow: "неявка", wo: "соперник снят" };
+export interface Pen {
+  r: number;
+  f: number;
+}
 
 export interface Match {
   id: string;
@@ -52,12 +72,17 @@ export interface Match {
   winner: string | null;
   order: number;
   table: number;
+  how?: WinHow;
+  pen?: Record<string, Pen>;
+  calledAt?: number;
+  scope?: string;
+  label?: string;
 }
 
 export interface Bye {
   round: number;
   id: string;
-  group: "A" | "B";
+  group: MatchGroup;
 }
 
 export interface Bracket {
@@ -69,6 +94,8 @@ export interface Bracket {
   done: boolean;
   byes: Bye[];
   table: number;
+  system?: System;
+  third?: boolean;
 }
 
 export interface Tournament {
@@ -92,6 +119,11 @@ export interface Tournament {
   showLogo?: boolean;
   restShort?: number;
   restLong?: number;
+  system?: System;
+  rrMax?: number;
+  olympicThird?: boolean;
+  tolerance?: number;
+  requireAdmit?: boolean;
 }
 
 export interface Judge {
@@ -133,6 +165,7 @@ export interface WeightClass {
   limit: number | null;
   prev: number;
   label: string;
+  abs?: boolean;
 }
 
 export const HAND_LABEL: Record<Hand, string> = { right: "правая", left: "левая" };
@@ -142,6 +175,10 @@ export const GROUP_LABEL: Record<MatchGroup, string> = {
   B: "утешительная",
   F: "финал",
   SF: "суперфинал",
+  O: "олимпийская",
+  T: "за 3-е место",
+  R: "круговая",
+  X: "решающий поединок",
 };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
@@ -185,18 +222,45 @@ export function weightClasses(groups: AgeGroup[]): WeightClass[] {
       prev: last,
       label: `${last}+ кг`,
     });
+    if (g.absolute)
+      res.push({ key: `${g.id}:abs`, groupId: g.id, gender: g.gender, groupName: g.name, limit: null, prev: 0, label: "абсолютная", abs: true });
   }
   return res;
 }
 
-export function classOf(a: Athlete, groups: AgeGroup[], year: number): WeightClass | null {
+/** Весовая категория по весу с учётом провеса (п. 8.8) и заявки на категорию выше (п. 8.9). */
+export function classOf(a: Athlete, groups: AgeGroup[], year: number, tol = 0): WeightClass | null {
   if (a.weight == null) return null;
   const age = year - a.birthYear;
   const g = groups.find((g) => g.gender === a.gender && age >= g.ageMin && age <= g.ageMax);
   if (!g) return null;
-  const classes = weightClasses([g]);
-  return classes.find((c) => c.limit == null || a.weight! <= c.limit) ?? null;
+  const classes = weightClasses([g]).filter((c) => !c.abs);
+  let i = classes.findIndex((c) => c.limit == null || a.weight! <= c.limit + tol + 1e-9);
+  if (i < 0) return null;
+  if (a.upClass && i < classes.length - 1) i++;
+  return classes[i];
 }
+
+export const isAdmitted = (a: Athlete, t: Tournament) =>
+  !t.requireAdmit || !!(a.admit?.med && a.admit?.ins && a.admit?.mandate);
+
+/** Все категории, в которых спортсмен участвует: своя весовая + абсолютная (если заявлен). */
+export function entryClasses(a: Athlete, groups: AgeGroup[], t: Tournament): WeightClass[] {
+  if (a.out || !isAdmitted(a, t)) return [];
+  const c = classOf(a, groups, tournamentYear(t), t.tolerance ?? 0);
+  if (!c) return [];
+  const res = [c];
+  const g = groups.find((x) => x.id === c.groupId);
+  if (a.absolute && g?.absolute) res.push(weightClasses([g]).find((x) => x.abs)!);
+  return res;
+}
+
+export function systemFor(t: Tournament, n: number): System {
+  if (t.rrMax && n <= t.rrMax) return "roundrobin";
+  return t.system ?? "double";
+}
+
+export const isAbsKey = (classKey: string) => classKey.endsWith(":abs");
 
 export function bracketKey(classKey: string, hand: Hand) {
   return `${classKey}|${hand}`;
@@ -218,18 +282,21 @@ export interface Standing {
   elimRound: number | null;
 }
 
+const elimLimit = (b: Bracket) => (b.system === "olympic" ? 1 : b.system === "roundrobin" ? Infinity : 2);
+
 export function standings(bracket: Bracket, matches: Match[]): Record<string, Standing> {
+  const lim = elimLimit(bracket);
   const st: Record<string, Standing> = {};
   bracket.athletes.forEach((id) => (st[id] = { id, wins: 0, losses: 0, elimRound: null }));
   matches
-    .filter((m) => m.key === bracket.key && m.winner)
-    .sort((x, y) => x.order - y.order)
+    .filter((m) => m.key === bracket.key && m.winner && m.group !== "X")
+    .sort((x, y) => x.round - y.round || x.order - y.order)
     .forEach((m) => {
       const loser = m.winner === m.a ? m.b : m.a;
       if (st[m.winner!]) st[m.winner!].wins++;
       if (st[loser]) {
         st[loser].losses++;
-        if (st[loser].losses >= 2) st[loser].elimRound = m.round;
+        if (st[loser].losses >= lim && st[loser].elimRound == null) st[loser].elimRound = m.round;
       }
     });
   return st;
@@ -261,8 +328,110 @@ function pairUp(ids: string[], ctx: PairCtx): [string, string][] {
   return pairs;
 }
 
-/** Строит следующий тур сетки с выбыванием после двух поражений. */
+/** Следующий тур сетки — по системе, выбранной для категории. */
 export function buildNextRound(
+  bracket: Bracket,
+  matches: Match[],
+  athletes: Record<string, Athlete>,
+  startOrder: number,
+): { bracket: Bracket; newMatches: Match[] } {
+  const sys = bracket.system ?? "double";
+  if (sys === "olympic") return buildOlympic(bracket, matches, athletes, startOrder);
+  if (sys === "roundrobin") return buildRoundRobin(bracket, startOrder);
+  return buildDouble(bracket, matches, athletes, startOrder);
+}
+
+const clubsOf = (bracket: Bracket, athletes: Record<string, Athlete>) => {
+  const clubs: Record<string, string> = {};
+  bracket.athletes.forEach((id) => (clubs[id] = (athletes[id]?.club || "").trim().toLowerCase()));
+  return clubs;
+};
+
+const maker = (bracket: Bracket, round: number, start: number) => {
+  let order = start;
+  return (a: string, b: string, group: MatchGroup, r = round): Match => ({
+    id: uid(),
+    key: bracket.key,
+    round: r,
+    group,
+    a,
+    b,
+    winner: null,
+    order: order++,
+    table: bracket.table,
+  });
+};
+
+/** Олимпийская система (п. 1.2-II): S = 2ⁿ − N участников проходят во 2-й тур без борьбы. */
+function buildOlympic(
+  bracket: Bracket,
+  matches: Match[],
+  athletes: Record<string, Athlete>,
+  startOrder: number,
+): { bracket: Bracket; newMatches: Match[] } {
+  const st = standings(bracket, matches);
+  const round = bracket.round + 1;
+  const mk = maker(bracket, round, startOrder);
+  const newMatches: Match[] = [];
+  if (bracket.round === 0) {
+    const ids = shuffle(bracket.athletes);
+    const N = ids.length;
+    if (N <= 1) return { bracket: { ...bracket, done: true }, newMatches };
+    let p = 1;
+    while (p < N) p *= 2;
+    const S = p - N;
+    const byes: Bye[] = ids.slice(0, S).map((id) => ({ round: 1, id, group: "O" }));
+    const pairs = pairUp(ids.slice(S), { met: new Set(), clubs: clubsOf(bracket, athletes), separateClubs: true });
+    pairs.forEach(([a, b]) => newMatches.push(mk(a, b, N === 2 ? "F" : "O")));
+    return { bracket: { ...bracket, round: 1, byes }, newMatches };
+  }
+  const active = bracket.athletes.filter((id) => st[id].losses === 0);
+  if (active.length <= 1) return { bracket: { ...bracket, done: true }, newMatches };
+  const own = matches.filter((m) => m.key === bracket.key && m.group !== "X");
+  const prev = own.filter((m) => m.round === bracket.round && m.group === "O").sort((x, y) => x.order - y.order);
+  const list = [
+    ...bracket.byes.filter((b) => b.round === bracket.round).map((b) => b.id),
+    ...prev.map((m) => m.winner!),
+  ].filter((id) => active.includes(id));
+  active.forEach((id) => !list.includes(id) && list.push(id));
+  if (list.length === 2) {
+    newMatches.push(mk(list[0], list[1], "F"));
+    if ((bracket.third ?? true) && prev.length === 2) {
+      const losers = prev.map((m) => (m.winner === m.a ? m.b : m.a));
+      newMatches.push(mk(losers[0], losers[1], "T"));
+    }
+    return { bracket: { ...bracket, round }, newMatches };
+  }
+  const byes = [...bracket.byes];
+  if (list.length % 2 === 1) byes.push({ round, id: list.pop()!, group: "O" });
+  for (let i = 0; i + 1 < list.length; i += 2) newMatches.push(mk(list[i], list[i + 1], "O"));
+  return { bracket: { ...bracket, round, byes }, newMatches };
+}
+
+/** Круговая система (п. 1.2-III): все туры составляются сразу, каждый встречается с каждым. */
+function buildRoundRobin(bracket: Bracket, startOrder: number): { bracket: Bracket; newMatches: Match[] } {
+  if (bracket.round > 0 || bracket.athletes.length <= 1) return { bracket: { ...bracket, done: true }, newMatches: [] };
+  const ids: (string | null)[] = shuffle(bracket.athletes);
+  if (ids.length % 2 === 1) ids.push(null);
+  const n = ids.length;
+  const mk = maker(bracket, 1, startOrder);
+  const newMatches: Match[] = [];
+  const byes: Bye[] = [];
+  const arr = [...ids];
+  for (let r = 1; r < n; r++) {
+    for (let i = 0; i < n / 2; i++) {
+      const a = arr[i];
+      const b = arr[n - 1 - i];
+      if (a && b) newMatches.push(mk(r % 2 ? a : b, r % 2 ? b : a, "R", r));
+      else if (a || b) byes.push({ round: r, id: (a || b)!, group: "R" });
+    }
+    arr.splice(1, 0, arr.pop()!);
+  }
+  return { bracket: { ...bracket, round: n - 1, byes }, newMatches };
+}
+
+/** Строит следующий тур сетки с выбыванием после двух поражений. */
+function buildDouble(
   bracket: Bracket,
   matches: Match[],
   athletes: Record<string, Athlete>,
@@ -330,12 +499,77 @@ export interface PlaceRow {
   losses: number;
   note?: string;
   needReweigh?: boolean;
+  /** Полное равенство с этим спортсменом — нужен решающий поединок (п. 2.6). */
+  decider?: string;
+}
+
+/** Победитель решающего поединка (п. 2.6) между двумя спортсменами в весовой категории. */
+export function deciderWinner(matches: Match[], classKey: string, x: string, y: string): string | null {
+  const m = matches.find(
+    (m) => m.group === "X" && m.key.startsWith(`${classKey}|`) && ((m.a === x && m.b === y) || (m.a === y && m.b === x)),
+  );
+  return m?.winner ?? null;
+}
+export function hasDecider(matches: Match[], classKey: string, x: string, y: string) {
+  return matches.some(
+    (m) => m.group === "X" && m.key.startsWith(`${classKey}|`) && ((m.a === x && m.b === y) || (m.a === y && m.b === x)),
+  );
+}
+
+function placesRoundRobin(bracket: Bracket, matches: Match[], athletes: Record<string, Athlete>): PlaceRow[] {
+  const st = standings(bracket, matches);
+  const own = matches.filter((m) => m.key === bracket.key && m.winner && m.group !== "X");
+  const h2h = (x: string, y: string) => {
+    const m = own.find((m) => (m.a === x && m.b === y) || (m.a === y && m.b === x));
+    return m ? (m.winner === x ? -1 : 1) : 0;
+  };
+  const ids = Object.keys(st);
+  const cnt = (id: string) => ids.filter((o) => st[o].wins === st[id].wins).length;
+  const cmp = (x: string, y: string) =>
+    st[y].wins - st[x].wins ||
+    (cnt(x) === 2 ? h2h(x, y) : 0) ||
+    breakTie(athletes[x], athletes[y], 0, 0).cmp ||
+    (deciderWinner(matches, bracket.classKey, x, y) === x ? -1 : deciderWinner(matches, bracket.classKey, x, y) === y ? 1 : 0);
+  ids.sort(cmp);
+  const out: PlaceRow[] = ids.map((id) => ({ id, place: 0, wins: st[id].wins, losses: st[id].losses }));
+  for (let i = 0; i < out.length; i++) {
+    out[i].place = i + 1;
+    if (i === 0) continue;
+    const x = ids[i - 1];
+    const y = ids[i];
+    if (st[x].wins !== st[y].wins) continue;
+    const nx = athletes[x]?.name ?? "";
+    const ny = athletes[y]?.name ?? "";
+    if (cnt(x) === 2 && h2h(x, y)) {
+      out[i].note = `Побед поровну: ${nx} выше по личной встрече.`;
+      continue;
+    }
+    const t = breakTie(athletes[x], athletes[y], 0, 0);
+    if (t.how === "weight") continue;
+    if (t.how === "reweigh") {
+      out[i].note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
+      continue;
+    }
+    if (t.needReweigh) {
+      out[i - 1].needReweigh = out[i].needReweigh = true;
+      out[i].note = `Побед и вес поровну: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
+      continue;
+    }
+    const d = deciderWinner(matches, bracket.classKey, x, y);
+    if (d) out[i].note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
+    else {
+      out[i].place = out[i - 1].place;
+      out[i].decider = x;
+      out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+    }
+  }
+  return out;
 }
 
 function firstLossRounds(bracket: Bracket, matches: Match[]): Record<string, number> {
   const r: Record<string, number> = {};
   matches
-    .filter((m) => m.key === bracket.key && m.winner)
+    .filter((m) => m.key === bracket.key && m.winner && m.group !== "X")
     .forEach((m) => {
       const loser = m.winner === m.a ? m.b : m.a;
       if (r[loser] == null || m.round < r[loser]) r[loser] = m.round;
@@ -364,19 +598,27 @@ export function places(
   matches: Match[],
   athletes: Record<string, Athlete>,
 ): PlaceRow[] {
+  if (bracket.system === "roundrobin") return placesRoundRobin(bracket, matches, athletes);
   const st = standings(bracket, matches);
   const fl = firstLossRounds(bracket, matches);
   const flOf = (id: string) => fl[id] ?? Infinity;
   const rows = Object.values(st);
+  const third = matches.find((m) => m.key === bracket.key && m.group === "T" && m.winner);
+  const tBonus = (id: string) => (third?.winner === id ? 1 : 0);
+  const dec = (x: string, y: string) => {
+    const d = deciderWinner(matches, bracket.classKey, x, y);
+    return d === x ? -1 : d === y ? 1 : 0;
+  };
   const pre = (x: Standing, y: Standing) => {
     const ex = x.elimRound ?? Infinity;
     const ey = y.elimRound ?? Infinity;
     if (ex !== ey) return ey - ex;
+    if (tBonus(x.id) !== tBonus(y.id)) return tBonus(y.id) - tBonus(x.id);
     if (x.elimRound == null && x.losses !== y.losses) return x.losses - y.losses;
     if (x.elimRound == null && x.wins !== y.wins) return y.wins - x.wins;
     return 0;
   };
-  rows.sort((x, y) => pre(x, y) || breakTie(athletes[x.id], athletes[y.id], flOf(x.id), flOf(y.id)).cmp);
+  rows.sort((x, y) => pre(x, y) || breakTie(athletes[x.id], athletes[y.id], flOf(x.id), flOf(y.id)).cmp || dec(x.id, y.id));
 
   const out: PlaceRow[] = rows.map((r) => ({ id: r.id, place: 0, wins: r.wins, losses: r.losses }));
   for (let i = 0; i < rows.length; i++) {
@@ -396,9 +638,13 @@ export function places(
     if (t.how === "reweigh") out[i].note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
     else if (t.how === "unbeaten" && !t.needReweigh)
       out[i].note = `Вес после перевзвешивания равный: ${nx} выше, т.к. дольше шёл без поражений.`;
-    else if (t.how === "none") {
-      out[i].place = out[i - 1].place;
-      if (!t.needReweigh) out[i].note = `Полное равенство: ${nx} и ${ny} делят ${out[i].place} место.`;
+    else if (t.how === "none" && !t.needReweigh) {
+      if (dec(x.id, y.id)) out[i].note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
+      else {
+        out[i].place = out[i - 1].place;
+        out[i].decider = x.id;
+        out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+      }
     }
   }
   return out;
@@ -414,6 +660,7 @@ export interface BiathlonRow {
   total: number;
   note?: string;
   needReweigh?: boolean;
+  decider?: string;
 }
 
 /** Двоеборье (ФАР): сумма очков за места на правой и левой руке. */
@@ -446,7 +693,11 @@ export function biathlon(
   const second = (r: BiathlonRow) => Math.max(r.right ?? Infinity, r.left ?? Infinity);
   const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total || best(x) - best(y) || second(x) - second(y);
   const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], 0, 0);
-  rows.sort((x, y) => cmpBase(x, y) || tie(x, y).cmp);
+  const dec = (x: BiathlonRow, y: BiathlonRow) => {
+    const d = deciderWinner(matches, classKey, x.id, y.id);
+    return d === x.id ? -1 : d === y.id ? 1 : 0;
+  };
+  rows.sort((x, y) => cmpBase(x, y) || tie(x, y).cmp || dec(x, y));
   for (let i = 0; i < rows.length; i++) {
     rows[i].place = i + 1;
     if (i === 0) continue;
@@ -471,13 +722,22 @@ export function biathlon(
       y.note = `Сумма и вес равны: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
     }
     if (t.how === "reweigh") y.note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
-    else if (t.how === "none") {
-      y.place = x.place;
-      if (!t.needReweigh)
-        y.note =
-          x.place === 3
-            ? `В результате двоеборья два 3-х места: ${nx} и ${ny} (п. 2.7 Правил).`
-            : `Полное равенство: ${nx} и ${ny} делят ${x.place} место.`;
+    else if (t.how === "none" && !t.needReweigh) {
+      if (dec(x, y)) y.note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
+      else {
+        y.place = x.place;
+        y.decider = x.id;
+        y.note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+      }
+    }
+  }
+  for (const r of rows) {
+    const hands = [r.left, r.right];
+    const podium = hands.every((p) => p === 2 || p === 3) && hands.includes(3);
+    if (r.place === 4 && podium) {
+      r.place = 3;
+      const n = athletes[r.id]?.name ?? "";
+      r.note = `${n}: места на руках ${r.left} и ${r.right}, в сумме 4-е — присуждается 3-е место, в протоколе два 3-х места (п. 2.7 Правил).`;
     }
   }
   return rows;
@@ -495,6 +755,9 @@ export interface TeamRow {
   total: number;
   medals: [number, number, number];
   members: number;
+  /** Количество мест 1, 2, 3… засчитанных команде — для равенства очков (п. 1.1). */
+  placeCounts: number[];
+  tieNote?: string;
 }
 
 /** Командный зачёт. Как в протоколах ФАР: от команды в каждой весовой категории засчитывается лучший результат. */
@@ -509,7 +772,7 @@ export function teamStandings(
     const a = athletes[id];
     return ((opts.by === "district" ? a?.district : a?.club) || "").trim();
   };
-  type Acc = TeamRow & { ids: Set<string>; best: Record<string, number> };
+  type Acc = TeamRow & { ids: Set<string>; best: Record<string, number>; bestPlace: Record<string, number>; list: number[] };
   const map: Record<string, Acc> = {};
   const get = (team: string): Acc =>
     (map[team.toLowerCase()] ||= {
@@ -522,8 +785,11 @@ export function teamStandings(
       total: 0,
       medals: [0, 0, 0],
       members: 0,
+      placeCounts: [],
       ids: new Set(),
       best: {},
+      bestPlace: {},
+      list: [],
     });
   const add = (id: string, place: number, slot: string, field: "right" | "left" | "biathlon") => {
     const team = teamOf(id);
@@ -534,15 +800,19 @@ export function teamStandings(
     if (opts.bestOnly) {
       const prev = row.best[slot];
       if (prev != null && prev >= p) return;
+      if (prev != null && prev === p && row.bestPlace[slot] <= place) return;
       row[field] += p - (prev ?? 0);
       row.total += p - (prev ?? 0);
       row.best[slot] = p;
+      row.bestPlace[slot] = place;
     } else {
       row[field] += p;
       row.total += p;
+      row.list.push(place);
     }
     if (place <= 3) row.medals[place - 1]++;
   };
+  brackets = brackets.filter((b) => !isAbsKey(b.classKey));
   if (opts.mode === "biathlon") {
     const classKeys = Array.from(new Set(brackets.map((b) => b.classKey)));
     for (const ck of classKeys)
@@ -550,12 +820,28 @@ export function teamStandings(
   } else {
     for (const b of brackets) for (const r of places(b, matches, athletes)) add(r.id, r.place, b.key, b.hand);
   }
-  const rows: TeamRow[] = Object.values(map).map(({ ids, best: _b, ...r }) => ({ ...r, members: ids.size }));
-  rows.sort((x, y) => y.total - x.total || x.team.localeCompare(y.team, "ru"));
+  const depth = Math.max(pts.length, 6);
+  const rows: TeamRow[] = Object.values(map).map(({ ids, best: _b, bestPlace, list, ...r }) => {
+    const all = opts.bestOnly ? Object.values(bestPlace) : list;
+    const placeCounts = Array.from({ length: depth }, (_, k) => all.filter((p) => p === k + 1).length);
+    return { ...r, members: ids.size, placeCounts };
+  });
+  const byPlaces = (x: TeamRow, y: TeamRow) => {
+    for (let k = 0; k < depth; k++) if (x.placeCounts[k] !== y.placeCounts[k]) return y.placeCounts[k] - x.placeCounts[k];
+    return 0;
+  };
+  rows.sort((x, y) => y.total - x.total || byPlaces(x, y) || x.team.localeCompare(y.team, "ru"));
+  for (let k = 1; k < rows.length; k++) {
+    const x = rows[k - 1];
+    const y = rows[k];
+    if (x.total !== y.total || !byPlaces(x, y)) continue;
+    const lvl = x.placeCounts.findIndex((c, idx) => c !== y.placeCounts[idx]);
+    y.tieNote = `Очков поровну с «${x.team}»: у них больше ${lvl + 1}-х мест (${x.placeCounts[lvl]} против ${y.placeCounts[lvl]}).`;
+  }
   let i = 0;
   while (i < rows.length) {
     let j = i;
-    while (j + 1 < rows.length && rows[j + 1].total === rows[i].total) j++;
+    while (j + 1 < rows.length && rows[j + 1].total === rows[i].total && !byPlaces(rows[i], rows[j + 1])) j++;
     for (let k = i; k <= j; k++) {
       rows[k].place = i + 1;
       rows[k].placeLabel = i === j ? String(i + 1) : `${i + 1}-${j + 1}`;

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, Match, fmtKg, standings, surname } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, OUT_LABEL, OutReason, WinHow, fmtKg, standings, surname } from "@/lib/arm";
+import CallBar from "./CallBar";
 import { pendingQueue } from "@/lib/queue";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { TimerControls } from "./RestTimer";
 import { restPresets, useTimers } from "@/lib/timers";
@@ -14,7 +16,7 @@ interface Props {
 }
 
 export default function JudgePanel({ table, onGoBracket }: Props) {
-  const { matches, brackets, amap, setWinner, undo, canUndo, tournament } = useStore();
+  const { matches, brackets, amap, setWinner, addPen, withdraw, undo, canUndo, tournament } = useStore();
   const presets = restPresets(tournament);
   const classMap = useClassMap();
   const queue = useMemo(() => pendingQueue(matches, table), [matches, table]);
@@ -22,12 +24,35 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
   const [flash, setFlash] = useState<string | null>(null);
   const timers = useTimers();
 
-  const decide = (m: Match, winnerId: string) => {
+  const decide = (m: Match, winnerId: string, how: WinHow = "pin") => {
     setFlash(winnerId);
     setTimeout(() => setFlash(null), 600);
-    setWinner(m.id, winnerId);
+    setWinner(m.id, winnerId, how);
     const w = amap[winnerId];
-    toast({ title: `Победа: ${w?.name ?? ""}`, description: "Сетка обновлена, к столу следующая пара." });
+    toast({
+      title: `Победа: ${w?.name ?? ""}${how !== "pin" ? ` (${HOW_LABEL[how]})` : ""}`,
+      description: "Сетка обновлена, к столу следующая пара.",
+    });
+  };
+
+  const pen = (m: Match, id: string, kind: "r" | "f") => {
+    const cur = m.pen?.[id] ?? { r: 0, f: 0 };
+    const after = { ...cur, [kind]: cur[kind] + 1 };
+    const fouls = after.f + Math.floor(after.r / 2);
+    addPen(m.id, id, kind);
+    if (fouls >= 2) {
+      const w = id === m.a ? m.b : m.a;
+      toast({ title: `Второй фол: ${amap[id]?.name ?? ""}`, description: `Победа присуждается: ${amap[w]?.name ?? ""} (п. 11.10).` });
+    } else if (kind === "r" && after.r % 2 === 0) {
+      toast({ title: "Два замечания = фол", description: amap[id]?.name ?? "" });
+    }
+  };
+
+  const takeOut = (id: string, reason: OutReason) => {
+    const n = amap[id]?.name ?? "";
+    if (!confirm(`${n}: ${OUT_LABEL[reason]}. Во всех оставшихся схватках (на обеих руках) будет засчитано поражение. Продолжить?`)) return;
+    withdraw(id, reason);
+    toast({ title: `${n} — ${OUT_LABEL[reason]}`, description: "Оставшиеся схватки засчитаны соперникам." });
   };
 
   useEffect(() => {
@@ -36,6 +61,8 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
       if (!current) return;
       if (e.key === "1" || e.key === "ArrowLeft") decide(current, current.a);
       if (e.key === "2" || e.key === "ArrowRight") decide(current, current.b);
+      if (e.key === "q" || e.key === "Q" || e.key === "й" || e.key === "Й") pen(current, current.a, "f");
+      if (e.key === "p" || e.key === "P" || e.key === "з" || e.key === "З") pen(current, current.b, "f");
       if (e.key === "t" || e.key === "T" || e.key === "е" || e.key === "Е") timers.start(current.table, "rest30", presets[0].seconds);
       if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") timers.start(current.table, "rest120", presets[1].seconds);
       if (e.key === "u" || e.key === "U" || e.key === "г" || e.key === "Г") {
@@ -85,6 +112,9 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
   const Side = ({ id, corner }: { id: string; corner: "blue" | "red" }) => {
     const a = amap[id];
     const losses = st[id]?.losses ?? 0;
+    const p = current.pen?.[id] ?? { r: 0, f: 0 };
+    const fouls = p.f + Math.floor(p.r / 2);
+    const remarks = p.r % 2;
     return (
       <div className={cn("win border-t-4", corner === "blue" ? "border-t-corner-blue" : "border-t-corner-red", flash === id && "animate-win-flash")}>
         <div className="win-bar">
@@ -107,6 +137,44 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
             {fmtKg(a?.weight)} кг · {a?.city || a?.club || "—"}
             {a?.club && a?.city ? ` · ${a.club}` : ""}
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button className="pill !py-1.5 text-sm" onClick={() => pen(current, id, "r")} title="Замечание (п. 11.14). Два замечания = фол">
+              <Icon name="TriangleAlert" size={14} /> Замечание
+            </button>
+            <button
+              className="pill !border-corner-red/50 !py-1.5 text-sm text-corner-red"
+              onClick={() => pen(current, id, "f")}
+              title={`Предупреждение (п. 11.15). Второй фол — поражение. Клавиша ${corner === "blue" ? "Q" : "P"}`}
+            >
+              <Icon name="Flag" size={14} /> Фол
+            </button>
+            <span className="ml-1 flex items-center gap-1" title="Фолы">
+              {[0, 1].map((i) => (
+                <span key={i} className={cn("h-4 w-4 rounded-full border-2", i < fouls ? "border-corner-red bg-corner-red" : "border-line")} />
+              ))}
+              {remarks > 0 && <span className="ml-1 font-mono text-xs text-panel-muted">+1 зам.</span>}
+            </span>
+            {(p.r > 0 || p.f > 0) && (
+              <button
+                className="text-xs text-panel-muted underline"
+                onClick={() => addPen(current.id, id, p.r > 0 && p.r % 2 === 1 ? "r" : p.f > 0 ? "f" : "r", -1)}
+              >
+                убрать
+              </button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="ml-auto rounded-full p-1.5 text-panel-muted hover:bg-surface hover:text-foreground" title="Снять с соревнований">
+                  <Icon name="UserX" size={17} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => takeOut(id, "injury")}>Травма — снять (п. 11.10)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => takeOut(id, "withdrawn")}>Снят с соревнований</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => takeOut(id, "disq")}>Дисквалификация (п. 11.17–11.18)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <button
             onClick={() => decide(current, id)}
             className={cn(
@@ -125,6 +193,13 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
 
   return (
     <>
+      <CallBar
+        match={current}
+        onNoShow={(absent) => {
+          const w = absent === current.a ? current.b : current.a;
+          decide(current, w, "noshow");
+        }}
+      />
       <section className="relative grid min-h-[380px] flex-1 grid-cols-1 gap-2.5 rounded-lg bg-frame p-2.5 md:grid-cols-2">
         <Side id={current.a} corner="blue" />
         <Side id={current.b} corner="red" />

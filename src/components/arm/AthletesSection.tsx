@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, RANKS, classOf, fmtBirth, fmtKg, tournamentYear } from "@/lib/arm";
+import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, classOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -18,23 +18,27 @@ const EMPTY = {
 };
 
 export default function AthletesSection() {
-  const { athletes, groups, tournament, addAthlete, updateAthlete, removeAthlete } = useStore();
+  const { athletes, groups, tournament, addAthlete, updateAthlete, removeAthlete, withdraw } = useStore();
   const classMap = useClassMap();
   const year = tournamentYear(tournament);
   const [f, setF] = useState(EMPTY);
   const [err, setErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "weighed" | "pending">("all");
+  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit">("all");
+  const needAdmit = !!tournament.requireAdmit;
+  const notAdmitted = athletes.filter((a) => !isAdmitted(a, tournament)).length;
 
   const weighed = athletes.filter((a) => a.weight != null).length;
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return athletes
-      .filter((a) => (filter === "all" ? true : filter === "weighed" ? a.weight != null : a.weight == null))
+      .filter((a) =>
+        filter === "all" ? true : filter === "weighed" ? a.weight != null : filter === "noadmit" ? !isAdmitted(a, tournament) : a.weight == null,
+      )
       .filter((a) => !s || `${a.name} ${a.club} ${a.city}`.toLowerCase().includes(s))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
-  }, [athletes, q, filter]);
+  }, [athletes, q, filter, tournament]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,10 +168,11 @@ export default function AthletesSection() {
       </form>
 
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="grid grid-cols-3 gap-3">
+        <div className={cn("grid gap-3", needAdmit ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
           <Stat label="заявлено" value={athletes.length} />
           <Stat label="взвешено" value={weighed} />
           <Stat label="ждут весов" value={athletes.length - weighed} accent={athletes.length - weighed > 0} />
+          {needAdmit && <Stat label="не допущены" value={notAdmitted} accent={notAdmitted > 0} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
@@ -179,6 +184,7 @@ export default function AthletesSection() {
               ["all", "Все"],
               ["pending", "Без веса"],
               ["weighed", "Взвешены"],
+              ...(needAdmit ? [["noadmit", "Без допуска"] as const] : []),
             ] as const
           ).map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} className={cn("pill", filter === k && "pill-on")}>
@@ -198,6 +204,7 @@ export default function AthletesSection() {
                   <th className="px-2 py-3 font-normal">вес, кг</th>
                   <th className="px-2 py-3 font-normal">категория</th>
                   <th className="px-2 py-3 font-normal">руки</th>
+                  {needAdmit && <th className="px-2 py-3 font-normal">допуск</th>}
                   <th className="px-2 py-3" />
                 </tr>
               </thead>
@@ -207,9 +214,17 @@ export default function AthletesSection() {
                     key={a.id}
                     a={a}
                     classLabel={(() => {
-                      const c = classOf(a, groups, year);
+                      const c = classOf(a, groups, year, tournament.tolerance ?? 0);
                       return c ? `${classMap[c.key]?.groupName} · ${c.label}` : a.weight == null ? "после взвешивания" : "нет подходящей";
                     })()}
+                    hint={weightHint(a, groups, year, tournament)}
+                    canAbs={(() => {
+                      const c = classOf(a, groups, year, tournament.tolerance ?? 0);
+                      return !!groups.find((g) => g.id === c?.groupId)?.absolute;
+                    })()}
+                    needAdmit={needAdmit}
+                    onPatch={(p) => updateAthlete(a.id, p)}
+                    onOut={(r) => withdraw(a.id, r)}
                     onWeight={(w) => updateAthlete(a.id, { weight: w })}
                     onHands={(h) => updateAthlete(a.id, { hands: h })}
                     onRemove={() => removeAthlete(a.id)}
@@ -217,7 +232,7 @@ export default function AthletesSection() {
                 ))}
                 {!list.length && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-panel-muted">
+                    <td colSpan={8} className="px-4 py-10 text-center text-panel-muted">
                       Никого не найдено
                     </td>
                   </tr>
@@ -227,25 +242,50 @@ export default function AthletesSection() {
           </div>
         </div>
         <p className="text-xs text-foreground/70">
-          После изменения веса или рук заново проведите жеребьёвку этой категории в разделе «Сетка».
+          После изменения веса, рук, категории или допуска заново проведите жеребьёвку этой категории в разделе «Сетка».
+          {(tournament.tolerance ?? 0) > 0 && ` Провес при допуске в категорию: ${String(tournament.tolerance).replace(".", ",")} кг (п. 8.8).`}
         </p>
       </div>
     </div>
   );
 }
 
+/** Подсказка по весу: провес, заявка выше, нет допуска. */
+function weightHint(a: Athlete, groups: AgeGroup[], year: number, t: Tournament): string {
+  if (a.weight == null) return "";
+  const tol = t.tolerance ?? 0;
+  const strict = classOf({ ...a, upClass: false }, groups, year, 0);
+  const withTol = classOf({ ...a, upClass: false }, groups, year, tol);
+  const parts: string[] = [];
+  if (strict && withTol && strict.key !== withTol.key && withTol.limit != null)
+    parts.push(`провес ${(a.weight - withTol.limit).toFixed(2).replace(".", ",")} кг — допущен`);
+  if (a.upClass) parts.push("заявлен на категорию выше");
+  if (a.absolute) parts.push("+ абсолютная");
+  return parts.join(" · ");
+}
+
 function Row({
   a,
   classLabel,
+  hint,
+  canAbs,
+  needAdmit,
   onWeight,
   onHands,
   onRemove,
+  onPatch,
+  onOut,
 }: {
   a: Athlete;
   classLabel: string;
+  hint: string;
+  canAbs: boolean;
+  needAdmit: boolean;
   onWeight: (w: number | null) => void;
   onHands: (h: Hand[]) => void;
   onRemove: () => void;
+  onPatch: (p: Partial<Athlete>) => void;
+  onOut: (r: OutReason | null) => void;
 }) {
   const [w, setW] = useState(a.weight == null ? "" : String(a.weight).replace(".", ","));
   const commit = () => {
@@ -257,10 +297,18 @@ function Row({
     if (v !== a.weight) onWeight(v);
   };
   return (
-    <tr className="border-b border-line/70 last:border-0 hover:bg-surface/60">
+    <tr className={cn("border-b border-line/70 last:border-0 hover:bg-surface/60", a.out && "opacity-60")}>
       <td className="px-4 py-2.5 font-medium">
         {a.name}
         <span className="ml-2 font-mono text-xs text-panel-muted">{a.gender === "M" ? "М" : "Ж"}</span>
+        {a.out && (
+          <div className="flex items-center gap-2 text-xs font-normal text-corner-red">
+            {OUT_LABEL[a.out.reason]}
+            <button className="text-panel-muted underline" onClick={() => onOut(null)} title="Вернуть в соревнования (уже засчитанные поражения останутся)">
+              вернуть
+            </button>
+          </div>
+        )}
       </td>
       <td className="px-2 py-2.5 font-mono text-panel-muted">
         {fmtBirth(a)}
@@ -285,7 +333,28 @@ function Row({
           title={a.weight != null ? `${fmtKg(a.weight)} кг` : "Введите вес и нажмите Enter"}
         />
       </td>
-      <td className="px-2 py-2.5 text-panel-muted">{classLabel}</td>
+      <td className="px-2 py-2.5 text-panel-muted">
+        {classLabel}
+        {hint && <div className="text-xs text-primary">{hint}</div>}
+        <div className="mt-1 flex flex-wrap gap-1">
+          <button
+            className={cn("rounded-full px-2 py-0.5 text-[11px]", a.upClass ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}
+            onClick={() => onPatch({ upClass: !a.upClass })}
+            title="Заявка на одну категорию выше (п. 8.9 Правил)"
+          >
+            ↑ выше
+          </button>
+          {canAbs && (
+            <button
+              className={cn("rounded-full px-2 py-0.5 text-[11px]", a.absolute ? "bg-primary text-primary-foreground" : "bg-surface text-panel-muted hover:text-foreground")}
+              onClick={() => onPatch({ absolute: !a.absolute })}
+              title="Участвует также в абсолютном первенстве"
+            >
+              абсолют
+            </button>
+          )}
+        </div>
+      </td>
       <td className="px-2 py-2.5">
         <div className="flex gap-1">
           {(["left", "right"] as Hand[]).map((h) => (
@@ -302,6 +371,35 @@ function Row({
           ))}
         </div>
       </td>
+      {needAdmit && (
+        <td className="px-2 py-2.5">
+          <div className="flex gap-1">
+            {(
+              [
+                ["med", "врач", "Допуск врача"],
+                ["ins", "страх.", "Страховка"],
+                ["mandate", "мандат", "Комиссия по допуску (мандатная)"],
+              ] as const
+            ).map(([k, l, t]) => {
+              const on = !!a.admit?.[k];
+              return (
+                <button
+                  key={k}
+                  title={t}
+                  onClick={() => onPatch({ admit: { ...(a.admit ?? {}), [k]: !on } })}
+                  className={cn(
+                    "rounded-full px-2 py-1 text-[11px] font-medium",
+                    on ? "bg-tip text-tip-foreground" : "border border-corner-red/40 text-corner-red/80",
+                  )}
+                >
+                  {on ? "✓ " : ""}
+                  {l}
+                </button>
+              );
+            })}
+          </div>
+        </td>
+      )}
       <td className="px-2 py-2.5 text-right">
         <button onClick={onRemove} className="rounded-full p-1.5 text-panel-muted hover:bg-destructive/20 hover:text-corner-red" aria-label="Удалить">
           <Icon name="Trash2" size={16} />

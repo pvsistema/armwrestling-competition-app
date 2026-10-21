@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, Match, fmtKg, surname } from "@/lib/arm";
+import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
 import { pendingQueue } from "@/lib/queue";
 import { BoardFocus } from "@/lib/boardSync";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { TimerBoard } from "./RestTimer";
 import { useTimers } from "@/lib/timers";
+import { callLeft } from "@/lib/queue";
 
 const GRID: Record<number, string> = {
   1: "grid-cols-1",
@@ -66,7 +67,43 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         </div>
         <div className={cn("text-panel-muted", big ? "text-xl md:text-3xl" : "text-sm md:text-base")}>
           против {amap[loser]?.name}
+          {m.how && m.how !== "pin" && <span className="ml-2 font-semibold text-corner-red">· {HOW_LABEL[m.how]}</span>}
         </div>
+      </div>
+    );
+  };
+
+  const penDots = (m: Match, id: string, big: boolean) => {
+    const p = m.pen?.[id];
+    if (!p) return null;
+    const fouls = p.f + Math.floor(p.r / 2);
+    const rem = p.r % 2;
+    if (!fouls && !rem) return null;
+    return (
+      <span className={cn("ml-2 inline-flex items-center gap-1 align-middle font-mono text-corner-red", big ? "text-xl md:text-3xl" : "text-sm md:text-base")}>
+        {Array.from({ length: fouls }, (_, i) => (
+          <span key={i} className={cn("inline-block rounded-full bg-corner-red", big ? "h-5 w-5 md:h-7 md:w-7" : "h-3 w-3")} />
+        ))}
+        <span>{fouls ? `фол${fouls > 1 ? "×2" : ""}` : ""}{rem ? `${fouls ? " +" : ""}замеч.` : ""}</span>
+      </span>
+    );
+  };
+
+  const callBadge = (m: Match | undefined, big: boolean) => {
+    if (!m) return null;
+    const left = callLeft(m, now.getTime());
+    if (left == null) return null;
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center gap-3 rounded-lg border-2 px-4 font-semibold",
+          left === 0 ? "animate-pulse border-corner-red bg-corner-red/10 text-corner-red" : left <= 15 ? "border-corner-red text-corner-red" : "border-primary text-primary",
+          big ? "py-3 text-2xl md:text-4xl" : "py-1.5 text-base md:text-lg",
+        )}
+      >
+        <Icon name="Megaphone" size={big ? 36 : 20} />
+        {left === 0 ? "Время на выход истекло" : "Вызов к столу"}
+        <span className="font-mono tabular-nums">0:{String(left).padStart(2, "0")}</span>
       </div>
     );
   };
@@ -149,9 +186,10 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           <div className="flex flex-1 p-3">{winnerBanner(last, false)}</div>
         ) : cur ? (
           <div className="flex flex-1 flex-col justify-center gap-1 px-4 py-3 md:px-6">
-            {name(cur.a, "blue", compact ? "md" : "lg")}
+            {callBadge(cur, false)}
+            {name(cur.a, "blue", compact ? "md" : "lg", cur)}
             <div className="pl-1 font-mono text-xs text-panel-muted md:text-sm">против</div>
-            {name(cur.b, "red", compact ? "md" : "lg")}
+            {name(cur.b, "red", compact ? "md" : "lg", cur)}
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center p-4 text-lg text-panel-muted">Схваток нет</div>
@@ -180,12 +218,13 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     );
   }
 
-  function name(id: string, corner: "blue" | "red", size: "md" | "lg") {
+  function name(id: string, corner: "blue" | "red", size: "md" | "lg", m?: Match) {
     const a = amap[id];
     return (
       <div className={cn("border-l-4 pl-3", corner === "blue" ? "border-corner-blue" : "border-corner-red")}>
         <div className={cn("font-semibold leading-tight tracking-tight", size === "lg" ? "text-[clamp(22px,2.6vw,44px)]" : "text-[clamp(18px,1.8vw,30px)]")}>
           {a?.name ?? "—"}
+          {m && penDots(m, id, false)}
         </div>
         <div className="truncate text-sm text-panel-muted md:text-base">
           {fmtKg(a?.weight)} кг{a?.club ? ` · ${a.club}` : ""}
@@ -222,6 +261,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           winnerBanner(lastOne, true)
         ) : current ? (
           <div className="flex flex-1 flex-col justify-center rounded-lg border border-line bg-frame p-3">
+            <div className="mb-3">{callBadge(current, true)}</div>
             <div className="mb-3 flex flex-wrap items-center justify-center gap-3 text-center text-base md:text-xl">
               <span className="rounded-full bg-primary px-4 py-1 font-semibold text-primary-foreground">СЕЙЧАС · СТОЛ {current.table}</span>
               <span className="text-panel-muted">
@@ -241,6 +281,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
                     {i === 0 ? "синий угол" : "красный угол"}
                   </div>
                   <div className="mt-3 text-[clamp(36px,5.5vw,104px)] font-semibold leading-[0.95] tracking-[-0.03em]">{amap[id]?.name}</div>
+                  <div className="mt-2 min-h-[1em]">{penDots(current, id, true)}</div>
                   <div className="mt-4 text-lg text-panel-muted md:text-3xl">
                     {fmtKg(amap[id]?.weight)} кг{amap[id]?.club ? ` · ${amap[id]?.club}` : ""}
                   </div>

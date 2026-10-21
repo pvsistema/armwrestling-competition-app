@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/lib/store";
-import { AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, classOf, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { shortLabel } from "@/lib/timers";
 
@@ -12,13 +12,14 @@ export default function ClassesSection() {
   const counts = useMemo(() => {
     const c: Record<string, { right: number; left: number }> = {};
     for (const a of athletes) {
-      const k = classOf(a, groups, year)?.key;
-      if (!k) continue;
-      c[k] ||= { right: 0, left: 0 };
-      a.hands.forEach((h) => c[k][h]++);
+      for (const cl of entryClasses(a, groups, tournament)) {
+        const k = cl.key;
+        c[k] ||= { right: 0, left: 0 };
+        a.hands.forEach((h) => c[k][h]++);
+      }
     }
     return c;
-  }, [athletes, groups, year]);
+  }, [athletes, groups, tournament]);
 
   const update = (id: string, patch: Partial<AgeGroup>) =>
     setGroups(groups.map((g) => (g.id === id ? { ...g, ...patch } : g)));
@@ -98,6 +99,7 @@ export default function ClassesSection() {
           </div>
         </div>
         <ScoringCard />
+        <SystemCard />
         <div className="rounded-lg bg-tip p-4 text-sm leading-relaxed text-tip-foreground">
           <div className="mb-1 font-semibold">Как считается возраст</div>
           Возраст = год турнира ({year}{tournament.date ? "" : ", пока не указана дата — текущий год"}) минус год рождения. Вес сравнивается с верхней границей: 80,0 кг — ещё «до 80».
@@ -177,6 +179,13 @@ function GroupCard({
             –
             <input className="h-8 w-12 rounded-full border border-line bg-panel text-center text-foreground outline-none" value={g.ageMax} onChange={(e) => onChange({ ageMax: parseInt(e.target.value) || 0 })} />
           </div>
+          <button
+            onClick={() => onChange({ absolute: !g.absolute })}
+            className={cn("rounded-full px-3 py-1 text-xs font-medium", g.absolute ? "bg-primary text-primary-foreground" : "bg-panel text-panel-muted hover:text-foreground")}
+            title="Абсолютное первенство: отдельная сетка без деления по весу (п. 1.1). Участников отмечают в разделе «Участники»."
+          >
+            {g.absolute ? "✓ " : "+ "}абсолютное
+          </button>
           <button onClick={onRemove} className="rounded-full p-1.5 text-panel-muted hover:text-corner-red" aria-label="Удалить группу">
             <Icon name="Trash2" size={16} />
           </button>
@@ -190,6 +199,7 @@ function GroupCard({
                 <div className="cat mt-1">
                   правая {n.right} · левая {n.left}
                 </div>
+                {c.abs && <div className="mt-1 text-[11px] text-panel-muted">без деления по весу</div>}
                 {c.limit != null && (
                   <button
                     onClick={() => onChange({ limits: g.limits.filter((l) => l !== c.limit) })}
@@ -335,6 +345,84 @@ function RestSettings() {
       )}
       {row("restShort", "Короткий отдых (клавиша T)", "после ситуации в поединке", 30, [15, 30, 45, 60])}
       {row("restLong", "Длинный отдых (клавиша Y)", "между схватками", 120, [60, 90, 120, 180, 300])}
+    </div>
+  );
+}
+
+function SystemCard() {
+  const { tournament, setTournament } = useStore();
+  const sys = tournament.system ?? "double";
+  const tol = tournament.tolerance ?? 0;
+  return (
+    <div className="win">
+      <div className="win-bar">
+        <i />
+        <i />
+        <i />
+        <b>система и допуск</b>
+      </div>
+      <div className="flex flex-col gap-3 p-5">
+        <div className="text-sm font-medium">Система проведения (п. 1.2 Правил)</div>
+        <div className="flex flex-col gap-2">
+          {(Object.keys(SYSTEM_LABEL) as System[]).map((m) => (
+            <button key={m} className={cn("pill justify-start", sys === m && "pill-on")} onClick={() => setTournament({ system: m })}>
+              {SYSTEM_LABEL[m]}
+            </button>
+          ))}
+        </div>
+        {sys === "olympic" && (
+          <button
+            className={cn("pill justify-start", (tournament.olympicThird ?? true) && "pill-on")}
+            onClick={() => setTournament({ olympicThird: !(tournament.olympicThird ?? true) })}
+          >
+            <Icon name={(tournament.olympicThird ?? true) ? "SquareCheck" : "Square"} size={15} /> Поединок за 3-е место
+          </button>
+        )}
+        {sys !== "roundrobin" && (
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            Круговая, если в категории не больше
+            <select
+              className="field !h-9 !w-20 !px-2"
+              value={tournament.rrMax ?? 0}
+              onChange={(e) => setTournament({ rrMax: parseInt(e.target.value, 10) || 0 })}
+            >
+              <option value={0}>—</option>
+              {[3, 4, 5, 6].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            участников
+          </label>
+        )}
+        <p className="text-xs leading-relaxed text-panel-muted">
+          Система применяется к новым жеребьёвкам. Уже построенные сетки не меняются — перетяните жребий, если нужно.
+        </p>
+
+        <div className="mt-1 border-t border-line pt-3 text-sm font-medium">Провес при допуске в категорию (п. 8.8)</div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            [0, "без провеса"],
+            [0.05, "0,05 кг · ЧР/ПР"],
+            [0.1, "0,1 кг"],
+          ].map(([v, l]) => (
+            <button key={String(v)} className={cn("pill !px-3 !py-1 text-xs", tol === v && "pill-on")} onClick={() => setTournament({ tolerance: v as number })}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className={cn("pill mt-1 justify-start", tournament.requireAdmit && "pill-on")}
+          onClick={() => setTournament({ requireAdmit: !tournament.requireAdmit })}
+        >
+          <Icon name={tournament.requireAdmit ? "SquareCheck" : "Square"} size={15} /> Требовать отметки допуска
+        </button>
+        <p className="text-xs leading-relaxed text-panel-muted">
+          Врач, страховка и комиссия по допуску (п. 3.1, 7). Без всех трёх отметок спортсмен не попадает в жеребьёвку.
+        </p>
+      </div>
     </div>
   );
 }

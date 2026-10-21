@@ -1,24 +1,19 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
-import { useClassMap, useStore } from "@/lib/store";
-import { GROUP_LABEL, HAND_LABEL, HAND_ORDER, Hand, Match, bracketKey, classOf, standings, surname, tournamentYear, weightClasses } from "@/lib/arm";
+import { poolsOf, useClassMap, useStore } from "@/lib/store";
+import { GROUP_LABEL, HAND_LABEL, HAND_ORDER, HOW_LABEL, Hand, Match, MatchGroup, OUT_LABEL, SYSTEM_LABEL, bracketKey, standings, surname, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import JudgeSheetsButton from "./JudgeSheetsButton";
 
 export default function BracketSection() {
   const { athletes, groups, tournament, brackets, matches, amap, draw, drawAll, clearDraw, setWinner } = useStore();
   const classMap = useClassMap();
-  const year = tournamentYear(tournament);
 
   const pools = useMemo(() => {
     const p: Record<string, number> = {};
-    for (const a of athletes) {
-      const c = classOf(a, groups, year);
-      if (!c) continue;
-      a.hands.forEach((h) => (p[bracketKey(c.key, h)] = (p[bracketKey(c.key, h)] || 0) + 1));
-    }
+    for (const [k, ids] of Object.entries(poolsOf({ athletes, groups, tournament }))) p[k] = ids.length;
     return p;
-  }, [athletes, groups, year]);
+  }, [athletes, groups, tournament]);
 
   const keys = useMemo(
     () =>
@@ -36,6 +31,9 @@ export default function BracketSection() {
   const own = matches.filter((m) => m.key === active);
   const st = bracket ? standings(bracket, matches) : {};
   const rounds = bracket ? Array.from({ length: bracket.round }, (_, i) => i + 1) : [];
+  const deciders = own.filter((m) => m.group === "X");
+  const sys = bracket?.system ?? "double";
+  const lim = sys === "olympic" ? 1 : sys === "roundrobin" ? Infinity : 2;
   const unweighed = athletes.filter((a) => a.weight == null).length;
 
   return (
@@ -122,13 +120,14 @@ export default function BracketSection() {
                     key={id}
                     className={cn(
                       "rounded-full px-3 py-1.5 text-sm",
-                      st[id].losses >= 2 ? "bg-foreground/5 text-foreground/50 line-through" : st[id].losses === 1 ? "bg-corner-red/10" : "bg-panel",
+                      amap[id]?.out || st[id].losses >= lim ? "bg-foreground/5 text-foreground/50 line-through" : st[id].losses >= 1 && lim === 2 ? "bg-corner-red/10" : "bg-panel",
                     )}
                   >
                     {surname(amap[id]?.name ?? "?")}
                     <span className="ml-1.5 font-mono text-xs opacity-70">
                       {st[id].wins}–{st[id].losses}
                     </span>
+                    {amap[id]?.out && <span className="ml-1.5 text-xs text-corner-red no-underline">({OUT_LABEL[amap[id]!.out!.reason]})</span>}
                   </span>
                 ))}
             </div>
@@ -141,7 +140,7 @@ export default function BracketSection() {
                     <div key={r} className="w-[250px] shrink-0 rounded-lg bg-frame p-2">
                       <div className="mb-2 px-2 font-mono text-xs font-medium text-tip-foreground">ТУР {r}</div>
                       <div className="flex flex-col gap-2">
-                        {(["A", "B", "F", "SF"] as const).map((g) => {
+                        {(["A", "B", "O", "R", "T", "F", "SF"] as MatchGroup[]).map((g) => {
                           const gm = rm.filter((m) => m.group === g);
                           const gb = byes.filter((b) => b.group === g);
                           if (!gm.length && !gb.length) return null;
@@ -165,6 +164,16 @@ export default function BracketSection() {
                     </div>
                   );
                 })}
+                {deciders.length > 0 && (
+                  <div className="w-[250px] shrink-0 rounded-lg bg-tip/40 p-2">
+                    <div className="mb-2 px-2 font-mono text-xs font-medium text-tip-foreground">РЕШАЮЩИЙ ПОЕДИНОК · п. 2.6</div>
+                    <div className="flex flex-col gap-1.5">
+                      {deciders.map((m) => (
+                        <MatchCard key={m.id} m={m} name={(id) => amap[id]?.name ?? "?"} onWin={(w) => setWinner(m.id, w)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {bracket.done && (
                   <div className="flex w-[220px] shrink-0 flex-col justify-center gap-2 rounded-lg bg-tip p-4 text-tip-foreground">
                     <Icon name="Trophy" size={28} />
@@ -190,8 +199,13 @@ export default function BracketSection() {
         )}
 
         <div className="rounded-lg bg-panel p-4 text-sm leading-relaxed text-panel-muted">
-          <span className="font-medium text-foreground">Система «до двух поражений». </span>
-          Каждый тур победители без поражений борются в основной сетке, проигравшие один раз — в утешительной. Два поражения — выбывание. Нечётному участнику даётся проход без схватки. Финал: лидер основной сетки против победителя утешительной; если лидер проигрывает — суперфинал.
+          <span className="font-medium text-foreground">Система: {SYSTEM_LABEL[sys]}. </span>
+          {sys === "olympic"
+            ? "Первый тур: S = 2ⁿ − N участников проходят во 2-й тур без борьбы (п. 1.2-II). Проигравший выбывает. Победитель финала — 1-е место, его соперник — 2-е; за 3-е место борются проигравшие в полуфинале."
+            : sys === "roundrobin"
+              ? "Каждый встречается с каждым, все туры составлены сразу (п. 1.2-III). Места — по числу побед; при равенстве двух — по личной встрече, затем по весу."
+              : "Каждый тур победители без поражений борются в основной сетке, проигравшие один раз — в утешительной. Два поражения — выбывание. Нечётному участнику даётся проход без схватки. Финал: лидер основной сетки против победителя утешительной; если лидер проигрывает — суперфинал."}
+          {" "}Систему для новых жеребьёвок можно сменить в разделе «Категории».
         </div>
       </div>
     </div>
@@ -219,7 +233,7 @@ function MatchCard({ m, name, onWin }: { m: Match; name: (id: string) => string;
     <div className="overflow-hidden rounded-sm bg-panel">
       <div className="flex items-center justify-between border-b border-line px-3 py-1 font-mono text-[10px] text-panel-muted">
         <span>#{m.order}</span>
-        <span>{m.winner ? "проведена" : "ожидает"}</span>
+        <span>{m.winner ? (m.how && m.how !== "pin" ? HOW_LABEL[m.how] : "проведена") : "ожидает"}</span>
       </div>
       {row(m.a)}
       <div className="h-px bg-line" />

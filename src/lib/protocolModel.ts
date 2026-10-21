@@ -66,6 +66,7 @@ const placeLabel = (rows: { place: number }[], i: number) => String(rows[i].plac
 
 function classTitle(c: WeightClass | undefined) {
   if (!c) return "";
+  if (c.abs) return `${c.groupName} — абсолютное первенство`;
   const w = c.limit == null ? `${c.prev}+ кг` : `${c.limit} кг`;
   return `${c.groupName} — весовая категория ${w}`;
 }

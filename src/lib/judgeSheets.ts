@@ -1,4 +1,4 @@
-import { Athlete, Bracket, GROUP_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
+import { Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
 import { fmtDateRange } from "./protocolModel";
 
 const BASE = import.meta.env.BASE_URL;
@@ -77,7 +77,7 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
   orderBrackets(list).forEach((b, bi) => {
     if (bi > 0) pdf.addPage();
     const c = inp.classMap[b.classKey];
-    const catTitle = `${c?.groupName ?? ""}, ${c?.limit == null ? `${c?.prev ?? ""}+ кг` : `до ${c.limit} кг`}, ${HAND_LABEL[b.hand]} рука`;
+    const catTitle = `${c?.groupName ?? ""}, ${c?.abs ? "абсолютное первенство" : c?.limit == null ? `${c?.prev ?? ""}+ кг` : `до ${c.limit} кг`}, ${HAND_LABEL[b.hand]} рука`;
     let pageHeader = (sub: string) => {
       if (logo) pdf.addImage(logo, "PNG", M, 8, 15, 15);
       pdf.setFont("NS", "bold");
@@ -132,14 +132,16 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
     let y = (pdf as any).lastAutoTable.finalY + 7;
 
     const own = inp.matches.filter((m) => m.key === b.key).sort((x, y) => x.round - y.round || x.order - y.order);
-    const total = Math.max(own.length, 2 * athletes.length - 1);
+    const N = athletes.length;
+    const expected = b.system === "olympic" ? N : b.system === "roundrobin" ? (N * (N - 1)) / 2 : 2 * N - 1;
+    const total = Math.max(own.length, b.done ? own.length : expected);
     const rows: string[][] = own.map((m, i) => [
       String(i + 1),
       String(m.round),
       GROUP_LABEL[m.group],
       name(m.a),
       name(m.b),
-      m.winner ? name(m.winner) : "",
+      m.winner ? `${name(m.winner)}${m.how && m.how !== "pin" ? ` (${HOW_LABEL[m.how]})` : ""}` : "",
     ]);
     for (let i = own.length; i < total; i++) rows.push([String(i + 1), "", "", "", "", ""]);
 

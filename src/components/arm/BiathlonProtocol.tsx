@@ -3,6 +3,7 @@ import { useClassMap, useStore } from "@/lib/store";
 import { biathlon, fmtBirth, fmtKg2, tPoints } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import ReweighInput from "./ReweighInput";
+import DeciderButton from "./DeciderButton";
 
 export default function BiathlonProtocol({ onlyDone }: { onlyDone: boolean }) {
   const { brackets, matches, amap, tournament } = useStore();
@@ -96,6 +97,7 @@ export default function BiathlonProtocol({ onlyDone }: { onlyDone: boolean }) {
                           <td />
                           <td colSpan={11} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
                             {r.note}
+                            {r.decider && <DeciderButton classKey={c.key} x={r.decider} y={r.id} />}
                           </td>
                         </tr>
                       )}
