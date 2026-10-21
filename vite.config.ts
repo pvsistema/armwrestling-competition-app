@@ -100,6 +100,16 @@ const hmrKeepalive = {
     transformIndexHtml: () => [{tag: 'script', children: hmrClient, injectTo: 'head-prepend' as const}],
 };
 
+const desktopHtml = {
+    name: 'desktop-offline-html',
+    apply: 'build' as const,
+    transformIndexHtml: (html: string) => html
+        .replace(/<script\b[^>]*\bsrc="https?:\/\/[^"]*"[^>]*><\/script>/g, '')
+        .replace(/<link\b[^>]*\bhref="https?:\/\/[^"]*"[^>]*>/g, '')
+        .replace(/<!-- Yandex\.Metrika counter -->[\s\S]*?<!-- \/Yandex\.Metrika counter -->/g, '')
+        .replace(/<meta (property|name)="(og|twitter):[^>]*>/g, ''),
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({mode}) => ({
     plugins: [
@@ -107,7 +117,9 @@ export default defineConfig(({mode}) => ({
         hmrKeepalive,
         mode === 'development' &&
         componentTagger(),
+        mode === 'desktop' && desktopHtml,
     ].filter(Boolean),
+    build: mode === 'desktop' ? {outDir: 'dist-desktop', emptyOutDir: true} : undefined,
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src"),
