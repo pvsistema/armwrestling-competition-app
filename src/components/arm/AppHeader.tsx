@@ -29,7 +29,14 @@ export default function AppHeader({ section, onSection, right }: Props) {
     <header className="relative flex items-center gap-7 print:hidden">
       <div className="flex items-center gap-3">
         {showLogo && <Logo className="h-11 w-11 shadow-md" />}
-        <div className="text-[1.6em] font-semibold leading-none tracking-[-0.03em]">армспорт</div>
+        <div className="flex flex-col leading-none">
+          <div className="text-[1.6em] font-bold tracking-[0.02em]">ФАР</div>
+          <div className="mt-1 whitespace-nowrap text-[0.68em] font-medium leading-tight text-panel-muted">
+            Федерация Армрестлинга
+            <br />
+            России
+          </div>
+        </div>
       </div>
       <nav className="hidden items-center gap-[22px] font-medium lg:flex">
         {SECTIONS.map((s) => (
