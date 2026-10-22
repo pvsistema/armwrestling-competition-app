@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { useStore } from "@/lib/store";
 
-export type Section = "home" | "athletes" | "classes" | "bracket" | "judge" | "results" | "board";
+export type Section = "home" | "athletes" | "classes" | "bracket" | "judge" | "results" | "board" | "far";
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "House" },
@@ -14,6 +14,7 @@ export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "judge", label: "Пульт судьи", icon: "Gavel" },
   { id: "results", label: "Протоколы", icon: "FileText" },
   { id: "board", label: "Табло", icon: "Monitor" },
+  { id: "far", label: "Паспорта ФАР", icon: "BookUser" },
 ];
 
 interface Props {

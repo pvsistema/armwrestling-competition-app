@@ -9,6 +9,7 @@ import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
 import HomeSection from "@/components/arm/HomeSection";
+import FarSection from "@/components/arm/FarSection";
 import NeedGroups from "@/components/arm/NeedGroups";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
 import RestoreBackup from "@/components/arm/RestoreBackup";
@@ -79,6 +80,7 @@ function Shell() {
           {section === "bracket" && !locked && <BracketSection />}
           {section === "results" && <ResultsSection />}
           {section === "board" && <BoardSection />}
+          {section === "far" && <FarSection onRegistered={() => setSection("athletes")} />}
           {section === "athletes" && !locked && (
             <div className="flex flex-wrap gap-2">
               <ImportAthletes />

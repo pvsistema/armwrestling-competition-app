@@ -135,3 +135,21 @@ export function matchFar(base: FarBase, name: string, birthYear?: number): FarPa
 }
 
 export const fmtFarBirth = (d: string) => (d ? d.split("-").reverse().join(".") : "");
+
+const SITE = "https://baza.armwrestling-ru.ru";
+export const farPhotoUrl = (id: string) => `${SITE}/far/far_photos/${id.slice(0, 6)}.jpg`;
+export const farFlagUrl = (region: string) => `${SITE}/far/rus_flags/${encodeURIComponent(region)}.jpg`;
+export const farSiteUrl = (id: string) => `${SITE}/index.php?page=edit_competitor&group=far&number=${id}`;
+
+const PENDING = "armsport-far-register";
+/** Передаёт спортсмена из базы ФАР в форму регистрации участника. */
+export function requestFarRegister(p: FarPassport) {
+  sessionStorage.setItem(PENDING, p.id);
+  window.dispatchEvent(new Event(PENDING));
+}
+export function takeFarRegister(): string | null {
+  const v = sessionStorage.getItem(PENDING);
+  if (v) sessionStorage.removeItem(PENDING);
+  return v;
+}
+export const FAR_REGISTER_EVENT = PENDING;

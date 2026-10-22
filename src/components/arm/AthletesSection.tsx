@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, PARA_HINT, PARA_LABEL, ParaClass, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import FarNameInput from "./FarNameInput";
 import FarUpdateButton from "./FarUpdateButton";
-import { FarPassport, fmtFarBirth, loadFar, matchFar } from "@/lib/farPassports";
+import { FAR_REGISTER_EVENT, FarPassport, fmtFarBirth, loadFar, matchFar, takeFarRegister } from "@/lib/farPassports";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import FarCard from "./FarCard";
 
 const EMPTY = {
   name: "",
@@ -112,6 +114,34 @@ export default function AthletesSection() {
       district: p.district || prev.district,
     }));
 
+  useEffect(() => {
+    const take = () => {
+      const id = takeFarRegister();
+      if (!id) return;
+      loadFar().then((b) => {
+        const p = b.byId.get(id);
+        if (!p) return;
+        setF({ ...EMPTY, gender: p.gender || "M" });
+        pickFar(p);
+        toast({ title: `Из базы ФАР: ${p.name}`, description: "Проверьте данные, укажите руки и нажмите «Зарегистрировать»." });
+      });
+    };
+    take();
+    window.addEventListener(FAR_REGISTER_EVENT, take);
+    return () => window.removeEventListener(FAR_REGISTER_EVENT, take);
+  }, []);
+
+  const [farCard, setFarCard] = useState<FarPassport | null>(null);
+  const openFar = (id: string) =>
+    loadFar().then(
+      (b) => {
+        const p = b.byId.get(id);
+        if (p) setFarCard(p);
+        else toast({ title: `Паспорт № ${id} не найден в базе ФАР`, description: "Обновите базу ФАР или проверьте номер." });
+      },
+      () => toast({ title: "База ФАР недоступна", variant: "destructive" }),
+    );
+
   const [checking, setChecking] = useState(false);
   const checkFar = async () => {
     setChecking(true);
@@ -153,6 +183,12 @@ export default function AthletesSection() {
 
   return (
     <div className="grid flex-1 gap-4 lg:grid-cols-[380px_1fr]">
+      <Dialog open={!!farCard} onOpenChange={(o) => !o && setFarCard(null)}>
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-auto">
+          <DialogTitle className="sr-only">Карточка спортсмена ФАР</DialogTitle>
+          {farCard && <FarCard p={farCard} />}
+        </DialogContent>
+      </Dialog>
       <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg bg-frame p-2.5">
         <div className="win flex-1">
           <div className="win-bar">
@@ -372,6 +408,7 @@ export default function AthletesSection() {
                     needAdmit={needAdmit}
                     onPatch={(p) => updateAthlete(a.id, p)}
                     onOut={(r) => withdraw(a.id, r)}
+                    onFar={openFar}
                     onWeight={(w) => updateAthlete(a.id, { weight: w })}
                     onHands={(h) => updateAthlete(a.id, { hands: h })}
                     onRemove={() => removeAthlete(a.id)}
@@ -448,6 +485,7 @@ function Row({
   onRemove,
   onPatch,
   onOut,
+  onFar,
 }: {
   a: Athlete;
   classLabel: string;
@@ -462,6 +500,7 @@ function Row({
   onRemove: () => void;
   onPatch: (p: Partial<Athlete>) => void;
   onOut: (r: OutReason | null) => void;
+  onFar: (id: string) => void;
 }) {
   const [w, setW] = useState(a.weight == null ? "" : String(a.weight).replace(".", ","));
   const commit = () => {
@@ -478,10 +517,15 @@ function Row({
         {a.name}
         <span className="ml-2 font-mono text-xs text-panel-muted">{a.gender === "M" ? "М" : "Ж"}</span>
         {a.farId && (
-          <span className="ml-1.5 inline-flex items-center gap-0.5 align-middle font-mono text-[10px] text-primary" title={`Паспорт ФАР № ${a.farId}`}>
+          <button
+            type="button"
+            onClick={() => onFar(a.farId!)}
+            className="ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1 align-middle font-mono text-[10px] text-primary hover:bg-primary/10"
+            title={`Паспорт ФАР № ${a.farId} — открыть карточку`}
+          >
             <Icon name="BadgeCheck" size={12} />
             ФАР
-          </span>
+          </button>
         )}
         {a.out && (
           <div className="flex items-center gap-2 text-xs font-normal text-corner-red">
