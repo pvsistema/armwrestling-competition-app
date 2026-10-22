@@ -21,6 +21,8 @@ export interface Athlete {
   birthDate?: string;
   rank?: string;
   district?: string;
+  /** Номер паспорта ФАР. */
+  farId?: string;
   upClass?: boolean;
   absolute?: boolean;
   /** Совершеннолетний юниор по желанию заявлен также во взрослую категорию. */

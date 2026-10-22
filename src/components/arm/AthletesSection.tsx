@@ -4,6 +4,8 @@ import { useClassMap, useStore } from "@/lib/store";
 import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, PARA_HINT, PARA_LABEL, ParaClass, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import FarNameInput from "./FarNameInput";
+import { FarPassport, fmtFarBirth, loadFar, matchFar } from "@/lib/farPassports";
 
 const EMPTY = {
   name: "",
@@ -17,6 +19,7 @@ const EMPTY = {
   hands: ["left", "right"] as Hand[],
   para: "" as ParaClass | "",
   adult: false,
+  farId: "",
 };
 
 export default function AthletesSection() {
@@ -26,7 +29,7 @@ export default function AthletesSection() {
   const [f, setF] = useState(EMPTY);
   const [err, setErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit" | "adult">("all");
+  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit" | "adult" | "nofar">("all");
   const needAdmit = !!tournament.requireAdmit;
   const notAdmitted = athletes.filter((a) => !isAdmitted(a, tournament)).length;
 
@@ -40,7 +43,9 @@ export default function AthletesSection() {
       .filter((a) =>
         filter === "all"
           ? true
-          : filter === "weighed"
+          : filter === "nofar"
+            ? !a.farId
+            : filter === "weighed"
             ? a.weight != null
             : filter === "noadmit"
               ? !isAdmitted(a, tournament)
@@ -48,7 +53,7 @@ export default function AthletesSection() {
                 ? inAdult(a)
                 : a.weight == null,
       )
-      .filter((a) => !s || `${a.name} ${a.club} ${a.city}`.toLowerCase().includes(s))
+      .filter((a) => !s || `${a.name} ${a.club} ${a.city} ${a.farId ?? ""}`.toLowerCase().includes(s))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [athletes, q, filter, tournament, groups, year]);
@@ -79,6 +84,7 @@ export default function AthletesSection() {
       district: f.district || undefined,
       para: f.para || undefined,
       adult: (preview?.canAdult && f.adult) || undefined,
+      farId: f.farId || undefined,
     });
     toast({ title: `Участник добавлен: ${f.name.trim()}`, description: preview?.text ?? "" });
     setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district, para: f.para });
@@ -92,6 +98,54 @@ export default function AthletesSection() {
     const tmp: Athlete = { id: "", name: "", gender: f.gender, birthYear: by, weight: w && w >= 25 ? w : null, club: "", city: "", hands: f.hands, para: f.para || undefined, adult: f.adult };
     return distribution(tmp, groups, tournament);
   }, [f.birthYear, f.weight, f.gender, f.hands, f.para, f.adult, groups, tournament, year]);
+
+  const pickFar = (p: FarPassport) =>
+    setF((prev) => ({
+      ...prev,
+      name: p.name,
+      farId: p.id,
+      gender: p.gender || prev.gender,
+      birthYear: p.birthDate ? fmtFarBirth(p.birthDate) : prev.birthYear,
+      club: p.region || prev.club,
+      rank: p.rank && RANKS.includes(p.rank) ? p.rank : prev.rank,
+      district: p.district || prev.district,
+    }));
+
+  const [checking, setChecking] = useState(false);
+  const checkFar = async () => {
+    setChecking(true);
+    try {
+      const base = await loadFar();
+      let found = 0;
+      let filled = 0;
+      for (const a of athletes) {
+        if (a.farId && base.byId.has(a.farId)) {
+          found++;
+          continue;
+        }
+        const m = matchFar(base, a.name, a.birthYear);
+        if (!m) continue;
+        found++;
+        filled++;
+        updateAthlete(a.id, {
+          farId: m.id,
+          rank: a.rank || (RANKS.includes(m.rank) ? m.rank : undefined),
+          district: a.district || m.district || undefined,
+          club: a.club || m.region,
+          birthDate: a.birthDate || (m.birthDate && m.birthDate.startsWith(String(a.birthYear)) ? m.birthDate : undefined),
+        });
+      }
+      const miss = athletes.length - found;
+      toast({
+        title: `Сверка с базой ФАР: найдено ${found} из ${athletes.length}`,
+        description: (filled ? `Добавлены номера паспортов: ${filled}. ` : "") + (miss ? `Нет в базе или ФИО записано иначе: ${miss} — фильтр «Нет паспорта ФАР».` : "Все участники есть в базе."),
+      });
+    } catch (e) {
+      toast({ title: "База ФАР недоступна", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const toggleHand = (h: Hand) =>
     setF((p) => ({ ...p, hands: p.hands.includes(h) ? p.hands.filter((x) => x !== h) : [...p.hands, h] }));
@@ -109,7 +163,13 @@ export default function AthletesSection() {
           <div className="flex flex-col gap-3 p-5">
             <h2 className="text-2xl font-medium tracking-tight">Новый участник</h2>
             <Field label="Фамилия Имя" error={err.name}>
-              <input className="field" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Волков Артём" />
+              <FarNameInput
+                value={f.name}
+                farId={f.farId}
+                onChange={(v) => setF((p) => ({ ...p, name: v }))}
+                onPick={pickFar}
+                onClearFar={() => setF((p) => ({ ...p, farId: "" }))}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Пол">
@@ -258,6 +318,16 @@ export default function AthletesSection() {
             title="Совершеннолетние юниоры, заявленные по желанию и во взрослую категорию"
           >
             <Icon name="Layers" size={15} /> Юниоры во взрослых
+          </button>
+          <button
+            onClick={() => setFilter(filter === "nofar" ? "all" : "nofar")}
+            className={cn("pill", filter === "nofar" && "pill-on")}
+            title="Участники без номера паспорта ФАР"
+          >
+            Нет паспорта ФАР
+          </button>
+          <button onClick={checkFar} disabled={checking || !athletes.length} className="pill disabled:opacity-50" title="Найти участников в базе паспортов ФАР и дописать номер паспорта, звание, округ">
+            <Icon name={checking ? "Loader2" : "BookUser"} size={15} className={checking ? "animate-spin" : ""} /> Сверить с ФАР
             <span className={cn("rounded-full px-1.5 font-mono text-xs", filter === "adult" ? "bg-white/20" : "bg-gold-soft text-tip-foreground")}>{adultCount}</span>
           </button>
         </div>
@@ -405,6 +475,12 @@ function Row({
       <td className="px-4 py-2.5 font-medium">
         {a.name}
         <span className="ml-2 font-mono text-xs text-panel-muted">{a.gender === "M" ? "М" : "Ж"}</span>
+        {a.farId && (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 align-middle font-mono text-[10px] text-primary" title={`Паспорт ФАР № ${a.farId}`}>
+            <Icon name="BadgeCheck" size={12} />
+            ФАР
+          </span>
+        )}
         {a.out && (
           <div className="flex items-center gap-2 text-xs font-normal text-corner-red">
             {OUT_LABEL[a.out.reason]}
