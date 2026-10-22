@@ -103,7 +103,7 @@ export default function StreamSection() {
     const u = url.trim();
     if (!u) return;
     if (/^rtsp:\/\//i.test(u)) {
-      toast({ title: "RTSP браузер не показывает", description: "Включите в настройках камеры HTTP/MJPEG или HLS-поток либо используйте ссылку с YouTube / RUTUBE / VK. Подробнее — «Как подключить камеру».", variant: "destructive" });
+      toast({ title: "RTSP браузер не показывает", description: "Включите в настройках камеры HTTP/MJPEG или HLS-поток либо используйте ссылку на эфир RUTUBE / VK Видео. Подробнее — «Как подключить камеру».", variant: "destructive" });
       setHelp(true);
       return;
     }
@@ -151,7 +151,7 @@ export default function StreamSection() {
                 className="field !h-20 resize-none py-2 font-mono text-xs"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="Ссылка: YouTube, RUTUBE, VK Видео, Twitch, .m3u8, адрес IP-камеры (http://192.168.1.64/…) или код <iframe>"
+                placeholder="Ссылка: RUTUBE, VK Видео, .m3u8, адрес IP-камеры (http://192.168.1.64/…) или код <iframe>"
               />
               {kind && (
                 <div className="flex items-center gap-1.5 text-xs text-primary">
@@ -225,7 +225,7 @@ export default function StreamSection() {
             {help && (
               <div className="flex flex-col gap-2 rounded-[12px] border border-line bg-surface p-3 text-xs leading-relaxed">
                 <p>
-                  <b>Онлайн-трансляция.</b> Вставьте обычную ссылку на эфир или видео с YouTube, RUTUBE, VK Видео или Twitch — программа сама сделает плеер.
+                  <b>Онлайн-трансляция.</b> Вставьте обычную ссылку на эфир или видео с RUTUBE или VK Видео — программа сама сделает плеер.
                 </p>
                 <p>
                   <b>IP-камера.</b> Нужна ссылка, которую понимает браузер:
@@ -238,7 +238,7 @@ export default function StreamSection() {
                   <li>HLS-поток <code className="font-mono">.m3u8</code> — у многих камер и регистраторов есть в настройках.</li>
                 </ul>
                 <p>
-                  Поток <b>rtsp://</b> браузер напрямую не показывает: включите в камере MJPEG/HLS, или запустите эфир с камеры через OBS на YouTube / RUTUBE / VK и вставьте ссылку на эфир.
+                  Поток <b>rtsp://</b> браузер напрямую не показывает: включите в камере MJPEG/HLS, или запустите эфир с камеры через OBS на RUTUBE / VK Видео и вставьте ссылку на эфир.
                 </p>
                 <p>Компьютер должен быть в одной сети с камерой. Логин и пароль камеры можно указать в ссылке: http://логин:пароль@192.168.1.64/…</p>
               </div>

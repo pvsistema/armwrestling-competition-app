@@ -10,10 +10,10 @@ export interface Stream {
 }
 
 export const KIND_LABEL: Record<StreamKind, string> = {
-  youtube: "YouTube",
+  youtube: "Онлайн-трансляция",
   rutube: "RUTUBE",
   vk: "VK Видео",
-  twitch: "Twitch",
+  twitch: "Онлайн-трансляция",
   hls: "HLS-поток (.m3u8)",
   video: "Видеофайл / MP4",
   mjpeg: "IP-камера (MJPEG / снимок)",

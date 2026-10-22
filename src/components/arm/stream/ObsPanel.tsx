@@ -50,7 +50,7 @@ export default function ObsPanel() {
     <div className="win gap-2 px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="Radio" size={17} className={on ? "text-corner-red" : "text-primary"} />
-        <span className="text-sm font-medium">Плашка для OBS (эфир на YouTube / RUTUBE / VK)</span>
+        <span className="text-sm font-medium">Плашка для OBS (эфир на RUTUBE / VK Видео)</span>
         <button
           className={cn("pill !py-1.5 text-sm", on && "!border-corner-red !bg-corner-red !text-white")}
           onClick={() => {
