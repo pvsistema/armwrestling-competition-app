@@ -6,6 +6,8 @@ import { farFlagUrl } from "@/lib/farPassports";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
+import { printCards } from "@/lib/printCards";
+import { savedText } from "@/lib/saveFolder";
 
 const SEX = { M: "муж.", F: "жен." } as const;
 
@@ -62,6 +64,19 @@ export default function ParticipantCard({ c, inTournament, onRegister, onRemoved
   const renew = async () => {
     const r = await renewCard(c.id);
     if (r) toast({ title: `Карточка ${r.id} продлена`, description: `Действует до ${fmtDate(r.to)}.` });
+  };
+
+  const [busy, setBusy] = useState(false);
+  const print = async (save: boolean) => {
+    setBusy(true);
+    try {
+      const r = await printCards([c], { save });
+      if (r) toast({ title: "Карточка сохранена в PDF", description: savedText(r) });
+    } catch (err) {
+      toast({ title: "Не удалось подготовить печать", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const remove = async () => {
@@ -135,6 +150,12 @@ export default function ParticipantCard({ c, inTournament, onRegister, onRemoved
               <Icon name="CalendarClock" size={16} /> Продлить до 31.12.{today().slice(0, 4)}
             </button>
           )}
+          <button className="pill" onClick={() => print(false)} disabled={busy}>
+            <Icon name={busy ? "Loader2" : "Printer"} size={15} className={busy ? "animate-spin" : ""} /> Печать карточки
+          </button>
+          <button className="pill" onClick={() => print(true)} disabled={busy} title="Сохранить PDF в папку «Карточки участников»">
+            <Icon name="FileDown" size={15} /> PDF
+          </button>
           <button className="pill" onClick={() => setEdit(!edit)}>
             <Icon name="Medal" size={15} /> Изменить звание
           </button>
