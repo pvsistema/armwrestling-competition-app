@@ -5,6 +5,7 @@ import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutR
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import FarNameInput from "./FarNameInput";
+import FarUpdateButton from "./FarUpdateButton";
 import { FarPassport, fmtFarBirth, loadFar, matchFar } from "@/lib/farPassports";
 
 const EMPTY = {
@@ -318,6 +319,7 @@ export default function AthletesSection() {
             title="Совершеннолетние юниоры, заявленные по желанию и во взрослую категорию"
           >
             <Icon name="Layers" size={15} /> Юниоры во взрослых
+            <span className={cn("rounded-full px-1.5 font-mono text-xs", filter === "adult" ? "bg-white/20" : "bg-gold-soft text-tip-foreground")}>{adultCount}</span>
           </button>
           <button
             onClick={() => setFilter(filter === "nofar" ? "all" : "nofar")}
@@ -328,8 +330,8 @@ export default function AthletesSection() {
           </button>
           <button onClick={checkFar} disabled={checking || !athletes.length} className="pill disabled:opacity-50" title="Найти участников в базе паспортов ФАР и дописать номер паспорта, звание, округ">
             <Icon name={checking ? "Loader2" : "BookUser"} size={15} className={checking ? "animate-spin" : ""} /> Сверить с ФАР
-            <span className={cn("rounded-full px-1.5 font-mono text-xs", filter === "adult" ? "bg-white/20" : "bg-gold-soft text-tip-foreground")}>{adultCount}</span>
           </button>
+          <FarUpdateButton />
         </div>
 
         <div className="win flex-1">

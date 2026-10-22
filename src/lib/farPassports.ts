@@ -10,44 +10,94 @@ export interface FarPassport {
   district: string;
 }
 
-interface Raw {
+export interface Raw {
   updated: string;
+  siteUpdated?: string;
   regions: [string, string][];
   p: [string, string, string, string, string, number][];
 }
 
 export interface FarBase {
   updated: string;
+  siteUpdated?: string;
+  local: boolean;
   list: FarPassport[];
   byId: Map<string, FarPassport>;
 }
 
-let cache: Promise<FarBase> | null = null;
+const DB = "armsport-far";
+const STORE = "base";
 
-/** Справочник паспортов ФАР (baza.armwrestling-ru.ru), загружается один раз. */
+function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T | undefined> {
+  return new Promise((res, rej) => {
+    if (typeof indexedDB === "undefined") return res(undefined);
+    const o = indexedDB.open(DB, 1);
+    o.onupgradeneeded = () => o.result.createObjectStore(STORE);
+    o.onerror = () => rej(o.error);
+    o.onsuccess = () => {
+      const tx = o.result.transaction(STORE, mode);
+      const r = fn(tx.objectStore(STORE));
+      tx.oncomplete = () => {
+        o.result.close();
+        res(r.result as T);
+      };
+      tx.onerror = () => rej(tx.error);
+    };
+  });
+}
+
+const readLocal = () => idb<Raw>("readonly", (s) => s.get("raw")).catch(() => undefined);
+const writeLocal = (raw: Raw) => idb("readwrite", (s) => s.put(raw, "raw"));
+
+function build(d: Raw, local: boolean): FarBase {
+  const list = d.p.map(([id, name, gender, rank, birthDate, ri]) => ({
+    id,
+    name,
+    gender: gender as Gender | "",
+    rank,
+    birthDate,
+    region: d.regions[ri]?.[0] ?? "",
+    district: d.regions[ri]?.[1] ?? "",
+  }));
+  return { updated: d.updated, siteUpdated: d.siteUpdated, local, list, byId: new Map(list.map((x) => [x.id, x])) };
+}
+
+async function loadBundled(): Promise<Raw> {
+  const r = await fetch(`${import.meta.env.BASE_URL}far-passports.json`);
+  if (!r.ok) throw new Error("Не удалось загрузить базу паспортов ФАР");
+  return r.json();
+}
+
+let cache: Promise<FarBase> | null = null;
+const listeners = new Set<(b: FarBase) => void>();
+
+/** Справочник паспортов ФАР: обновлённая копия на этом компьютере или встроенная в программу. */
 export function loadFar(): Promise<FarBase> {
-  cache ??= fetch(`${import.meta.env.BASE_URL}far-passports.json`)
-    .then((r) => {
-      if (!r.ok) throw new Error("Не удалось загрузить базу паспортов ФАР");
-      return r.json() as Promise<Raw>;
-    })
-    .then((d) => {
-      const list = d.p.map(([id, name, gender, rank, birthDate, ri]) => ({
-        id,
-        name,
-        gender: gender as Gender | "",
-        rank,
-        birthDate,
-        region: d.regions[ri]?.[0] ?? "",
-        district: d.regions[ri]?.[1] ?? "",
-      }));
-      return { updated: d.updated, list, byId: new Map(list.map((x) => [x.id, x])) };
-    })
-    .catch((e) => {
-      cache = null;
-      throw e;
-    });
+  cache ??= (async () => {
+    const local = await readLocal();
+    if (local?.p?.length) return build(local, true);
+    return build(await loadBundled(), false);
+  })().catch((e) => {
+    cache = null;
+    throw e;
+  });
   return cache;
+}
+
+/** Подписка на замену базы после обновления. */
+export function onFarChange(fn: (b: FarBase) => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+export async function saveFar(raw: Raw): Promise<FarBase> {
+  await writeLocal(raw);
+  const b = build(raw, true);
+  cache = Promise.resolve(b);
+  listeners.forEach((f) => f(b));
+  return b;
 }
 
 export const normName = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();

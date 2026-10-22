@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
-import { FarBase, FarPassport, fmtFarBirth, loadFar, searchFar } from "@/lib/farPassports";
+import { FarBase, FarPassport, fmtFarBirth, loadFar, onFarChange, searchFar } from "@/lib/farPassports";
 
 interface Props {
   value: string;
@@ -21,6 +21,10 @@ export default function FarNameInput({ value, farId, onChange, onPick, onClearFa
 
   useEffect(() => {
     loadFar().then(setBase, () => setFailed(true));
+    return onFarChange((b) => {
+      setBase(b);
+      setFailed(false);
+    });
   }, []);
 
   useEffect(() => {
