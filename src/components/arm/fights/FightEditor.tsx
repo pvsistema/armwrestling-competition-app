@@ -42,7 +42,7 @@ function FighterForm({ side, f, onChange }: { side: Side; f: Fighter; onChange: 
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <FarNameInput value={f.name} farId={f.farId} onChange={(v) => onChange({ ...f, name: v })} onPick={pickFar} onClearFar={() => onChange({ ...f, farId: undefined })} />
           <div className="flex items-center gap-2">
-            <input className="field" value={f.region} onChange={(e) => onChange({ ...f, region: e.target.value })} placeholder="Страна или регион (Грузия, Москва…)" />
+            <input className="field" value={f.region} onChange={(e) => onChange({ ...f, region: e.target.value })} placeholder="Город" />
             <FighterFlag region={f.region} className="h-8 w-12" />
           </div>
         </div>

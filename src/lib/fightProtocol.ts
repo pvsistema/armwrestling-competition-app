@@ -14,10 +14,10 @@ export function buildFightProtocol(n: FightNight): ProtocolDoc {
       { title: "№", width: 4, align: "center" },
       { title: "Бой", width: 14 },
       { title: "Синий угол", width: 22 },
-      { title: "Страна / регион", width: 13 },
+      { title: "Город", width: 13 },
       { title: "Счёт", width: 8, align: "center" },
       { title: "Красный угол", width: 22 },
-      { title: "Страна / регион", width: 13 },
+      { title: "Город", width: 13 },
       { title: "Победитель", width: 20 },
     ],
     rows: fights.map((f, i) => {
