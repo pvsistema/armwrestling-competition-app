@@ -36,17 +36,19 @@ function Shell() {
   const right = (
     <>
       {section === "judge" && (
-        <div className="flex rounded-full border border-line bg-surface p-1 text-foreground">
+        <div className="flex items-center rounded-full border border-line bg-surface p-1 text-foreground">
+          <span className="hidden pl-2 pr-1 text-xs text-panel-muted xl:inline">Стол:</span>
           {tables.map((t) => (
             <button
               key={String(t)}
               onClick={() => setTable(t)}
+              title={t === "all" ? "Все столы" : `Стол ${t}`}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[0.9em] font-medium transition-colors",
+                "min-w-8 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.88em] font-medium transition-colors",
                 table === t ? "bg-primary text-primary-foreground" : "hover:bg-accent",
               )}
             >
-              {t === "all" ? "Все столы" : `Стол ${t}`}
+              {t === "all" ? "Все" : t}
             </button>
           ))}
         </div>
