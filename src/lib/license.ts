@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import func2url from "../../backend/func2url.json";
 
 export const LICENSE_URL = (func2url as Record<string, string>).license;
-export const DEMO_ATHLETES = 10;
+export const DEMO_ATHLETES = 20;
 export const DEMO_TABLES = 1;
 
 const LKEY = "armsport-license";
