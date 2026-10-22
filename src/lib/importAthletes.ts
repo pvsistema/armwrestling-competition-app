@@ -1,10 +1,21 @@
 import { Athlete, DISTRICTS, Gender, Hand, RANKS } from "./arm";
+import { FarBase, fmtFarBirth, loadFar, matchFar } from "./farPassports";
 
-export type Draft = Omit<Athlete, "id"> & { _row: number; _errors: string[]; _dup?: boolean };
+export type Draft = Omit<Athlete, "id"> & {
+  _row: number;
+  _errors: string[];
+  _dup?: boolean;
+  /** Сверка с базой ФАР: by-id — найден по номеру, by-name — найден по ФИО, missing — номер не найден в базе. */
+  _far?: "by-id" | "by-name" | "missing";
+  /** Поля, заполненные из базы ФАР. */
+  _filled?: string[];
+  _gExplicit?: boolean;
+};
 
-type Col = "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left" | "para";
+type Col = "far" | "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left" | "para";
 
 const HEADERS: [Col, RegExp][] = [
+  ["far", /(паспорт|фар|far|штрих.?код|id спортсмена)/],
   ["num", /^(№|n|no|#|п\/п|№ ?п\/п)$/],
   ["name", /(ф\.?\s*и\.?\s*о|фио|фамилия.*имя|участник|спортсмен)/],
   ["surname", /^фамилия$/],
@@ -44,7 +55,7 @@ function findHeader(rows: string[][]): { idx: number; map: Partial<Record<Col, n
       const c = detectCol(cell);
       if (c && map[c] == null) map[c] = j;
     });
-    if (map.name != null || map.surname != null) return { idx: i, map };
+    if (map.name != null || map.surname != null || map.far != null) return { idx: i, map };
   }
   return null;
 }
@@ -152,12 +163,13 @@ function parseHands(v: string, r: string, l: string, hasRL: boolean): Hand[] {
 export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: Draft[]; error?: string } {
   const strRows = raw.map((r) => r.map((c) => (c instanceof Date ? c.toISOString() : norm(c))));
   const head = findHeader(strRows);
-  if (!head) return { drafts: [], error: "Не нашёл строку заголовков: нужен столбец «ФИО» (или «Фамилия» и «Имя»)." };
+  if (!head) return { drafts: [], error: "Не нашёл строку заголовков: нужен столбец «ФИО» (или «Фамилия» и «Имя») либо «№ паспорта ФАР»." };
   const { idx, map } = head;
   const get = (row: unknown[], c: Col) => (map[c] != null ? row[map[c]!] : "");
   const gs = (row: unknown[], c: Col) => norm(get(row, c));
   const hasRL = map.right != null || map.left != null;
   const known = new Set(existing.map((a) => a.name.toLowerCase().replace(/\s+/g, " ")));
+  const knownFar = new Set(existing.map((a) => a.farId).filter(Boolean));
   const drafts: Draft[] = [];
 
   for (let i = idx + 1; i < raw.length; i++) {
@@ -165,7 +177,9 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
     let name = gs(row, "name");
     if (!name && map.surname != null) name = [gs(row, "surname"), gs(row, "first"), gs(row, "patronymic")].filter(Boolean).join(" ");
     name = name.replace(/\s+/g, " ").trim();
-    if (!name || !/[а-яёa-z]/i.test(name)) continue;
+    const farId = parseFarId(get(row, "far"));
+    if ((!name || !/[а-яёa-z]/i.test(name)) && !farId) continue;
+    if (!/[а-яёa-z]/i.test(name)) name = "";
     if (/^(итого|всего|главный|секретар|судья|представитель|тренер)/i.test(name)) continue;
 
     const birthRaw = get(row, "birth");
@@ -173,7 +187,8 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
     const genderInBirth = birthStr.match(/(муж|жен)/i)?.[1];
     const b = parseBirth(birthRaw);
     const errors: string[] = [];
-    if (name.split(" ").length < 2) errors.push("нет имени");
+    if (name && name.split(" ").length < 2) errors.push("нет имени");
+    if (!name) errors.push("нет ФИО");
     if (!b) errors.push("нет даты рождения");
 
     const d: Draft = {
@@ -181,6 +196,8 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
       _errors: errors,
       name,
       gender: parseGender(gs(row, "gender"), name, genderInBirth),
+      _gExplicit: !!(gs(row, "gender") || genderInBirth),
+      farId: farId || undefined,
       birthYear: b?.year ?? 0,
       birthDate: b?.date,
       weight: parseWeight(get(row, "weight")),
@@ -192,12 +209,69 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
       para: /pid|сид|коляс/i.test(gs(row, "para")) ? "PID" : /piu|сто/i.test(gs(row, "para")) ? "PIU" : undefined,
     };
     const key = name.toLowerCase();
-    if (known.has(key)) d._dup = true;
-    known.add(key);
+    if ((name && known.has(key)) || (farId && knownFar.has(farId))) d._dup = true;
+    if (name) known.add(key);
+    if (farId) knownFar.add(farId);
     drafts.push(d);
   }
   if (!drafts.length) return { drafts, error: "В таблице не найдено ни одного участника под заголовками." };
   return { drafts };
+}
+
+function parseFarId(v: unknown): string {
+  if (typeof v === "number" && Number.isFinite(v)) return String(Math.round(v));
+  const d = norm(v).replace(/[\s-]/g, "");
+  return /^\d{6,}$/.test(d) ? d : "";
+}
+
+/** Дополняет заявку данными из базы паспортов ФАР: по номеру паспорта, а без номера — по ФИО и году рождения. */
+export function enrichFromFar(drafts: Draft[], base: FarBase): Draft[] {
+  return drafts.map((d0) => {
+    const d: Draft = { ...d0, _errors: [...d0._errors], _filled: [] };
+    const fill = (k: string) => d._filled!.push(k);
+    const p = d.farId ? base.byId.get(d.farId) : matchFar(base, d.name, d.birthYear || undefined);
+    if (!p) {
+      if (d.farId) d._far = "missing";
+      return d;
+    }
+    d._far = d.farId ? "by-id" : "by-name";
+    d.farId = p.id;
+    if (!d.name) {
+      d.name = p.name;
+      d._errors = d._errors.filter((e) => e !== "нет ФИО" && e !== "нет имени");
+      fill("ФИО");
+    } else if (d.name.split(" ").length < 3 && p.name.split(" ").length >= 3 && d._far === "by-id") {
+      d.name = p.name;
+      d._errors = d._errors.filter((e) => e !== "нет имени");
+      fill("отчество");
+    }
+    if (!d._gExplicit && p.gender) {
+      if (p.gender !== d.gender) fill("пол");
+      d.gender = p.gender;
+    }
+    if (!d.birthYear && p.birthDate) {
+      d.birthYear = +p.birthDate.slice(0, 4);
+      d.birthDate = p.birthDate;
+      d._errors = d._errors.filter((e) => e !== "нет даты рождения");
+      fill("дата рождения");
+    } else if (d.birthYear && !d.birthDate && p.birthDate.startsWith(String(d.birthYear))) {
+      d.birthDate = p.birthDate;
+      fill(`дата ${fmtFarBirth(p.birthDate)}`);
+    }
+    if (!d.rank && p.rank && RANKS.includes(p.rank)) {
+      d.rank = p.rank;
+      fill("звание");
+    }
+    if (!d.club && p.region) {
+      d.club = p.region;
+      fill("субъект РФ");
+    }
+    if (!d.district && p.district) {
+      d.district = p.district;
+      fill("округ");
+    }
+    return d;
+  });
 }
 
 async function readExcel(file: File): Promise<unknown[][]> {
@@ -243,17 +317,28 @@ export async function readAthletesFile(file: File, existing: Athlete[]) {
   else if (["xlsx", "xls", "csv", "ods"].includes(ext)) rows = await readExcel(file);
   else return { drafts: [] as Draft[], error: "Поддерживаются файлы Excel (.xlsx, .xls, .csv) и Word (.docx)." };
   if (!rows.length) return { drafts: [] as Draft[], error: "В файле не найдено таблицы с участниками." };
-  return rowsToDrafts(rows, existing);
+  const res = rowsToDrafts(rows, existing);
+  if (res.error) return res;
+  const base = await loadFar().catch(() => null);
+  if (!base) return { ...res, farUnavailable: true };
+  const drafts = enrichFromFar(res.drafts, base);
+  const names = new Set(existing.map((a) => a.name.toLowerCase().replace(/\s+/g, " ")));
+  const ids = new Set(existing.map((a) => a.farId).filter(Boolean));
+  drafts.forEach((d) => {
+    if (names.has(d.name.toLowerCase()) || (d.farId && ids.has(d.farId))) d._dup = true;
+  });
+  return { drafts };
 }
 
 export async function downloadTemplate() {
   const XLSX = await import("xlsx");
   const ws = XLSX.utils.aoa_to_sheet([
-    ["№", "Фамилия, имя, отчество", "Пол", "Дата рождения", "Спортивное звание", "Субъект РФ / команда", "Город", "Федеральный округ", "Вес", "Правая", "Левая"],
-    [1, "Иванов Иван Иванович", "муж", "10.01.2011", "1 р.", "Республика Татарстан", "Казань", "ПФО", "", "+", "+"],
-    [2, "Петрова Анна Сергеевна", "жен", "05.10.2011", "2 юн. р.", "Орловская область", "Орёл", "ЦФО", "", "+", ""],
+    ["№", "Фамилия, имя, отчество", "№ паспорта ФАР", "Пол", "Дата рождения", "Спортивное звание", "Субъект РФ / команда", "Город", "Федеральный округ", "Вес", "Правая", "Левая"],
+    [1, "Иванов Иван Иванович", "", "муж", "10.01.2011", "1 р.", "Республика Татарстан", "Казань", "ПФО", "", "+", "+"],
+    [2, "Петрова Анна Сергеевна", "", "жен", "05.10.2011", "2 юн. р.", "Орловская область", "Орёл", "ЦФО", "", "+", ""],
+    [3, "", "2221650000006", "", "", "", "", "", "", "", "+", "+"],
   ]);
-  ws["!cols"] = [{ wch: 4 }, { wch: 34 }, { wch: 6 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 7 }, { wch: 8 }, { wch: 8 }];
+  ws["!cols"] = [{ wch: 4 }, { wch: 34 }, { wch: 16 }, { wch: 6 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 7 }, { wch: 8 }, { wch: 8 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Заявка");
   XLSX.writeFile(wb, "Шаблон заявки армрестлинг.xlsx");

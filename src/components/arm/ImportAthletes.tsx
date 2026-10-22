@@ -21,7 +21,8 @@ export default function ImportAthletes() {
     if (!file) return;
     setBusy(true);
     try {
-      const { drafts: d, error } = await readAthletesFile(file, athletes);
+      const res = await readAthletesFile(file, athletes);
+      const { drafts: d, error } = res;
       if (error) {
         toast({ title: "Не удалось прочитать заявку", description: error, variant: "destructive" });
         return;
@@ -29,6 +30,8 @@ export default function ImportAthletes() {
       setFileName(file.name);
       setDrafts(d);
       setSkip(new Set(d.map((x, i) => (x._dup || x._errors.length ? i : -1)).filter((i) => i >= 0)));
+      if ("farUnavailable" in res && res.farUnavailable)
+        toast({ title: "База ФАР недоступна", description: "Заявка загружена без сверки с паспортами ФАР." });
     } catch {
       toast({ title: "Файл не открылся", description: "Проверьте, что это Excel или Word (.docx) и он не защищён паролем.", variant: "destructive" });
     } finally {
@@ -48,7 +51,7 @@ export default function ImportAthletes() {
     if (!drafts) return;
     const list = drafts
       .filter((_, i) => !skip.has(i))
-      .map(({ _row, _errors, _dup, ...a }) => ({ ...a, birthYear: a.birthYear || new Date().getFullYear() - 18 }));
+      .map(({ _row, _errors, _dup, _far, _filled, _gExplicit, ...a }) => ({ ...a, birthYear: a.birthYear || new Date().getFullYear() - 18 }));
     addAthletes(list);
     toast({ title: `Добавлено участников: ${list.length}`, description: "Проверьте вес на взвешивании и проведите жеребьёвку." });
     setDrafts(null);
@@ -57,6 +60,8 @@ export default function ImportAthletes() {
   const chosen = drafts ? drafts.length - skip.size : 0;
   const withErr = drafts?.filter((d) => d._errors.length).length ?? 0;
   const dups = drafts?.filter((d) => d._dup).length ?? 0;
+  const farFound = drafts?.filter((d) => d._far === "by-id" || d._far === "by-name").length ?? 0;
+  const farMissing = drafts?.filter((d) => d._far === "missing").length ?? 0;
 
   return (
     <>
@@ -75,15 +80,18 @@ export default function ImportAthletes() {
             <div className="text-sm text-panel-muted">
               Найдено {drafts?.length ?? 0}
               {dups ? ` · уже есть в списке: ${dups}` : ""}
-              {withErr ? ` · с ошибками: ${withErr}` : ""}. Снимите галочку с тех, кого добавлять не нужно.
+              {withErr ? ` · с ошибками: ${withErr}` : ""}
+              {drafts?.length ? ` · найдены в базе ФАР: ${farFound}` : ""}
+              {farMissing ? ` · номер паспорта не найден: ${farMissing}` : ""}. Снимите галочку с тех, кого добавлять не нужно.
             </div>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[1020px] text-sm">
               <thead className="sticky top-0 bg-surface">
                 <tr className="text-left font-mono text-xs text-panel-muted">
                   <th className="w-10 px-3 py-2" />
                   <th className="px-2 py-2 font-normal">ФИО</th>
+                  <th className="px-2 py-2 font-normal">паспорт ФАР</th>
                   <th className="px-2 py-2 font-normal">пол</th>
                   <th className="px-2 py-2 font-normal">д.р.</th>
                   <th className="px-2 py-2 font-normal">звание</th>
@@ -104,12 +112,34 @@ export default function ImportAthletes() {
                       <Icon name={skip.has(i) ? "Square" : "SquareCheck"} size={17} className={skip.has(i) ? "" : "text-primary"} />
                     </td>
                     <td className="px-2 py-2">
-                      <div className="font-medium">{d.name}</div>
+                      <div className="font-medium">{d.name || "—"}</div>
                       {(d._errors.length > 0 || d._dup) && (
                         <div className="text-xs text-corner-red">
                           стр. {d._row}: {[...(d._dup ? ["уже в списке"] : []), ...d._errors].join(", ")}
                         </div>
                       )}
+                    </td>
+                    <td className="px-2 py-2">
+                      {d.farId ? (
+                        <div
+                          className={cn("flex items-center gap-1 font-mono text-xs", d._far === "missing" ? "text-corner-red" : "text-primary")}
+                          title={
+                            d._far === "missing"
+                              ? "Такого номера нет в базе ФАР — проверьте номер или обновите базу"
+                              : d._far === "by-name"
+                                ? "Номер найден в базе ФАР по ФИО и году рождения"
+                                : "Номер найден в базе ФАР"
+                          }
+                        >
+                          <Icon name={d._far === "missing" ? "BadgeAlert" : "BadgeCheck"} size={13} />
+                          {d.farId}
+                        </div>
+                      ) : (
+                        <span className="text-panel-muted">—</span>
+                      )}
+                      {d._far === "by-name" && <div className="text-[11px] text-panel-muted">найден по ФИО</div>}
+                      {d._far === "missing" && <div className="text-[11px] text-corner-red">нет в базе</div>}
+                      {!!d._filled?.length && <div className="text-[11px] text-panel-muted">из базы: {d._filled.join(", ")}</div>}
                     </td>
                     <td className="px-2 py-2">{d.gender === "F" ? "жен" : "муж"}</td>
                     <td className="px-2 py-2 font-mono text-xs">{d.birthYear ? fmtBirth({ ...d, id: "" }) : "—"}</td>
@@ -128,7 +158,7 @@ export default function ImportAthletes() {
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-line px-6 py-4">
             <span className="mr-auto text-xs text-panel-muted">
-              Пол определяется по столбцу «Пол», а если его нет — по отчеству. Если рука не указана — обе.
+              По номеру паспорта ФАР (или по ФИО и году рождения) пустые поля заполняются из базы ФАР. Пол — по столбцу «Пол», иначе из базы или по отчеству. Если рука не указана — обе.
             </span>
             <button className="pill" onClick={() => setDrafts(null)}>
               Отмена
