@@ -4,6 +4,7 @@ import { DISTRICTS, PARA_LABEL, ParaClass, RANKS } from "@/lib/arm";
 import { RepAthlete, cab, fmtD } from "@/lib/cabinet";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import RepImport from "./RepImport";
 
 const EMPTY: RepAthlete = { name: "", gender: "M", birthDate: "", rank: "", club: "", city: "", district: "", farId: "", coach: "", insNum: "", insTo: "" };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -136,6 +137,7 @@ export default function RepAthletes({ list, team, reload }: { list: RepAthlete[]
           <button className="btn-gold" onClick={() => setEdit({ ...EMPTY })}>
             <Icon name="UserPlus" size={18} /> Добавить спортсмена
           </button>
+          <RepImport list={list} team={team} reload={reload} />
           <input className="field ml-auto w-full max-w-xs" placeholder="Поиск по ФИО" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       )}

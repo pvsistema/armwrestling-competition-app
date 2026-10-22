@@ -14,7 +14,7 @@ CORS = {
     "Access-Control-Max-Age": "86400",
 }
 ADMIN = {"reps_list", "rep_create", "rep_update", "rep_delete", "admin_login"}
-REP = {"me", "logout", "athletes", "athlete_save", "athlete_delete", "intakes", "entry_submit", "entry_withdraw", "password"}
+REP = {"me", "logout", "athletes", "athlete_save", "athletes_bulk", "athlete_delete", "intakes", "entry_submit", "entry_withdraw", "password"}
 SECRETARY = {"intake_open", "intake_close", "intake_get"}
 MAX_ATHLETES = 500
 
@@ -165,6 +165,24 @@ def rep_action(cur, rep: dict, action: str, b: dict, token: str) -> dict:
             cur.execute("INSERT INTO rep_athletes (rep_id, data) VALUES (%s, %s) RETURNING id", (rid, data))
             aid = cur.fetchone()[0]
         return resp(200, {"ok": True, "id": aid})
+    if action == "athletes_bulk":
+        items = b.get("athletes") or []
+        if not isinstance(items, list) or not items:
+            return err(400, "Список пуст")
+        cur.execute("SELECT COUNT(*) FROM rep_athletes WHERE rep_id = %s", (rid,))
+        if cur.fetchone()[0] + len(items) > MAX_ATHLETES:
+            return err(400, f"Не больше {MAX_ATHLETES} спортсменов")
+        added = 0
+        for a in items:
+            if not isinstance(a, dict) or not clip(a.get("name"), 200):
+                continue
+            a.pop("id", None)
+            data = json.dumps(a, ensure_ascii=False)
+            if len(data) > 5000:
+                continue
+            cur.execute("INSERT INTO rep_athletes (rep_id, data) VALUES (%s, %s)", (rid, data))
+            added += 1
+        return resp(200, {"ok": True, "added": added})
     if action == "athlete_delete":
         cur.execute("DELETE FROM rep_athletes WHERE id = %s AND rep_id = %s", (int(b.get("id") or 0), rid))
         return resp(200, {"ok": True})

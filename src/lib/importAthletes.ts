@@ -10,11 +10,17 @@ export type Draft = Omit<Athlete, "id"> & {
   /** Поля, заполненные из базы ФАР. */
   _filled?: string[];
   _gExplicit?: boolean;
+  /** Для кабинета представителя: тренер и страховой полис. */
+  _coach?: string;
+  _insNum?: string;
+  _insTo?: string;
 };
 
-type Col = "far" | "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left" | "para";
+type Col = "far" | "num" | "name" | "surname" | "first" | "patronymic" | "gender" | "birth" | "rank" | "club" | "city" | "district" | "weight" | "hands" | "right" | "left" | "para" | "coach" | "insNum" | "insTo";
 
 const HEADERS: [Col, RegExp][] = [
+  ["insTo", /((страх|полис).*(до|срок|действ|оконч))|((срок|действ|оконч).*(страх|полис))/],
+  ["insNum", /(полис|страхов)/],
   ["far", /(паспорт|фар|far|штрих.?код|id спортсмена)/],
   ["num", /^(№|n|no|#|п\/п|№ ?п\/п)$/],
   ["name", /(ф\.?\s*и\.?\s*о|фио|фамилия.*имя|участник|спортсмен)/],
@@ -42,6 +48,8 @@ const norm = (s: unknown) =>
 function detectCol(h: string): Col | null {
   const t = h.toLowerCase().replace(/ё/g, "е");
   if (!t) return null;
+  if (/страх.*(компан|организ|сумм)/.test(t)) return null;
+  if (/тренер/.test(t) && !/представ/.test(t)) return "coach";
   if (/место|очки|сумма|тренер|примечан|подпись|виза|врач/.test(t)) return null;
   if (/пол.*дата|дата.*пол/.test(t)) return "birth";
   for (const [c, re] of HEADERS) if (re.test(t)) return c;
@@ -206,6 +214,9 @@ export function rowsToDrafts(raw: unknown[][], existing: Athlete[]): { drafts: D
       rank: parseRank(gs(row, "rank")),
       district: parseDistrict(gs(row, "district")),
       hands: parseHands(gs(row, "hands"), gs(row, "right"), gs(row, "left"), hasRL),
+      _coach: gs(row, "coach") || undefined,
+      _insNum: (typeof get(row, "insNum") === "number" ? String(get(row, "insNum")) : gs(row, "insNum")) || undefined,
+      _insTo: parseBirth(get(row, "insTo"))?.date,
       para: /pid|сид|коляс/i.test(gs(row, "para")) ? "PID" : /piu|сто/i.test(gs(row, "para")) ? "PIU" : undefined,
     };
     const key = name.toLowerCase();
@@ -342,4 +353,17 @@ export async function downloadTemplate() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Заявка");
   XLSX.writeFile(wb, "Шаблон заявки армрестлинг.xlsx");
+}
+
+export async function downloadRepTemplate() {
+  const XLSX = await import("xlsx");
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["№", "Фамилия, имя, отчество", "Пол", "Дата рождения", "Спортивное звание", "Субъект РФ / команда", "Город", "Федеральный округ", "№ паспорта ФАР", "Тренер", "№ страхового полиса", "Страховка действует до"],
+    [1, "Иванов Иван Иванович", "муж", "10.01.2011", "1 р.", "Республика Татарстан", "Казань", "ПФО", "", "Сидоров П. П.", "ННС-123456", "31.12.2026"],
+    [2, "Петрова Анна Сергеевна", "жен", "05.10.2011", "2 юн. р.", "Республика Татарстан", "Казань", "ПФО", "", "Сидоров П. П.", "ННС-123457", "31.12.2026"],
+  ]);
+  ws["!cols"] = [{ wch: 4 }, { wch: 34 }, { wch: 6 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 20 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Спортсмены");
+  XLSX.writeFile(wb, "Шаблон списка спортсменов.xlsx");
 }

@@ -51,7 +51,7 @@ export default function ImportAthletes() {
     if (!drafts) return;
     const list = drafts
       .filter((_, i) => !skip.has(i))
-      .map(({ _row, _errors, _dup, _far, _filled, _gExplicit, ...a }) => ({ ...a, birthYear: a.birthYear || new Date().getFullYear() - 18 }));
+      .map(({ _row, _errors, _dup, _far, _filled, _gExplicit, _coach, _insNum, _insTo, ...a }) => ({ ...a, birthYear: a.birthYear || new Date().getFullYear() - 18 }));
     addAthletes(list);
     toast({ title: `Добавлено участников: ${list.length}`, description: "Проверьте вес на взвешивании и проведите жеребьёвку." });
     setDrafts(null);
