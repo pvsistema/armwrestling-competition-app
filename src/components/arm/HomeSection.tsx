@@ -3,6 +3,7 @@ import { useStore } from "@/lib/store";
 import { fmtDateRange } from "@/lib/protocolModel";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
+import ClearTournament from "./ClearTournament";
 import type { Section } from "./AppHeader";
 
 const STEPS: { id: Section; title: string; text: string; icon: string }[] = [
@@ -72,6 +73,10 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
               >
                 <Icon name="Monitor" size={17} /> Табло
               </button>
+              <ClearTournament
+                className="!border-white/30 !bg-white/10 !px-5 !py-3 !text-white hover:!bg-white/20"
+                onDone={() => onSection("classes")}
+              />
             </div>
           </div>
 

@@ -10,6 +10,7 @@ import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
 import HomeSection from "@/components/arm/HomeSection";
 import FarSection from "@/components/arm/FarSection";
+import ClearTournament from "@/components/arm/ClearTournament";
 import NeedGroups from "@/components/arm/NeedGroups";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
 import RestoreBackup from "@/components/arm/RestoreBackup";
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 function Shell() {
   const [section, setSection] = useState<Section>("home");
   const [table, setTable] = useState<number | "all">("all");
-  const { tournament, groups, resetEmpty } = useStore();
+  const { tournament, groups } = useStore();
   const locked = !groups.length && (section === "athletes" || section === "bracket" || section === "judge");
 
   const tables: (number | "all")[] = ["all", ...Array.from({ length: tournament.tables }, (_, i) => i + 1)];
@@ -85,9 +86,7 @@ function Shell() {
             <div className="flex flex-wrap gap-2">
               <ImportAthletes />
               <TournamentFileButtons />
-              <button className="pill" onClick={() => confirm("Начать новый турнир с пустым списком?") && resetEmpty()}>
-                <Icon name="FilePlus" size={15} /> Новый турнир
-              </button>
+              <ClearTournament label="Новый турнир (очистить всё)" onDone={() => setSection("classes")} />
             </div>
           )}
         </main>

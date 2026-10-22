@@ -64,6 +64,8 @@ export default function RestoreBackup() {
       const lost = c.athletes === 0 && b.athletes > 0;
       const behind = b.done > c.done || b.brackets > c.brackets || b.athletes > c.athletes;
       const newer = info.file.at > changedAt + 60000;
+      const clearedAt = Number(localStorage.getItem("armsport-v1:clearedAt") || 0);
+      if (info.file.at < clearedAt) return;
       if (lost || (behind && newer)) {
         setAuto(true);
         setOpen(true);

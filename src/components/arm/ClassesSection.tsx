@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
+import ClearTournament from "./ClearTournament";
 import { useStore } from "@/lib/store";
 import { isAdultGroup, PARA_LABEL, ParaClass, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,9 @@ export default function ClassesSection({ onNext }: { onNext?: () => void }) {
             <b>турнир</b>
           </div>
           <div className="flex flex-col gap-3 p-5">
+            <div className="-mb-1 flex justify-end">
+              <ClearTournament className="!py-1.5 text-sm" />
+            </div>
             <L label="Название">
               <input className="field" value={tournament.name} onChange={(e) => setTournament({ name: e.target.value })} placeholder="Первенство области по армрестлингу" />
             </L>

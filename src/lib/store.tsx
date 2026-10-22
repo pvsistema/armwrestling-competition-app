@@ -193,6 +193,7 @@ interface Ctx extends State {
   undo: () => void;
   canUndo: boolean;
   resetEmpty: () => void;
+  clearTournament: (keep: { groups?: boolean; staff?: boolean }) => void;
   exportData: () => State;
   importData: (data: State) => void;
 }
@@ -404,6 +405,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const clearTournament = useCallback((keep: { groups?: boolean; staff?: boolean }) => {
+    ["armsport-timers", "armsport-stall", "armsport-board-focus"].forEach((k) => {
+      localStorage.removeItem(k);
+      window.dispatchEvent(new StorageEvent("storage", { key: k }));
+    });
+    localStorage.setItem(`${KEY}:clearedAt`, String(Date.now()));
+    setS((p) => {
+      const t = p.tournament;
+      const staff = keep.staff
+        ? {
+            tables: t.tables,
+            chiefJudge: t.chiefJudge,
+            chiefJudgeCat: t.chiefJudgeCat,
+            secretary: t.secretary,
+            secretaryCat: t.secretaryCat,
+            deputyJudge: t.deputyJudge,
+            deputySecretary: t.deputySecretary,
+            judges: t.judges,
+            mode: t.mode,
+            points: t.points,
+            system: t.system,
+            rrMax: t.rrMax,
+            olympicThird: t.olympicThird,
+            tolerance: t.tolerance,
+            requireAdmit: t.requireAdmit,
+            firstHand: t.firstHand,
+            handFlow: t.handFlow,
+            teamBestOnly: t.teamBestOnly,
+            restShort: t.restShort,
+            restLong: t.restLong,
+            requirements: t.requirements,
+            showLogo: t.showLogo,
+            showFar: t.showFar,
+            showFarPhoto: t.showFarPhoto,
+            showFarPhotoBoard: t.showFarPhotoBoard,
+            showFlagBoard: t.showFlagBoard,
+            showFlagProtocol: t.showFlagProtocol,
+          }
+        : {};
+      return {
+        tournament: { ...DEFAULT_TOURNAMENT, ...staff },
+        groups: keep.groups ? p.groups : [],
+        athletes: [],
+        brackets: [],
+        matches: [],
+        order: 1,
+      };
+    });
+  }, []);
+
   const exportData = useCallback(() => s, [s]);
   const importData = useCallback((data: State) => setS(data), []);
 
@@ -428,6 +479,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undo,
     canUndo: !!lastDecided,
     resetEmpty,
+    clearTournament,
     exportData,
     importData,
   };
