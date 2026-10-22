@@ -28,10 +28,13 @@ export default function BoardSection() {
           </button>
         )}
         {Array.from({ length: tables }, (_, i) => i + 1).map((t) => (
-          <button key={t} className={cn("pill", (focus === t || (tables === 1 && t === 1)) && "pill-on")} onClick={() => setFocus(t)}>
+          <button key={t} className={cn("pill", (focus === t || (tables === 1 && t === 1 && focus !== "team")) && "pill-on")} onClick={() => setFocus(t)}>
             Стол {t}
           </button>
         ))}
+        <button className={cn("pill", focus === "team" && "pill-on")} onClick={() => setFocus("team")} title="Таблица командного зачёта с флагами регионов. На табло — клавиша K">
+          <Icon name="Flag" size={15} /> Командный зачёт
+        </button>
         <span
           className="ml-auto hidden cursor-help items-center gap-1 text-xs text-panel-muted xl:inline-flex"
           title="Перетащите окно табло на проектор или второй монитор и нажмите «Полный экран» (или клавишу F). Выбор стола здесь сразу меняется и на табло. На самом табло тоже можно нажать на любой стол — он развернётся на весь экран."

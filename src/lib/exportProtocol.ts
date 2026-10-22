@@ -3,6 +3,24 @@ import type { ProtocolDoc, Section } from "./protocolModel";
 const BASE = import.meta.env.BASE_URL;
 
 import { Saved, saveFile } from "./saveFolder";
+import { flagData } from "./flags";
+
+type FlagImg = { data: Uint8Array; dataUrl: string };
+/** Флаги для разделов с колонкой субъекта РФ: ключ — «номер раздела:номер строки». */
+async function loadFlags(doc: ProtocolDoc): Promise<Map<string, FlagImg>> {
+  const out = new Map<string, FlagImg>();
+  await Promise.all(
+    doc.sections.flatMap((s, si) =>
+      s.flagCol == null
+        ? []
+        : s.rows.map(async (r, ri) => {
+            const f = await flagData(r[s.flagCol!]);
+            if (f) out.set(`${si}:${ri}`, f);
+          }),
+    ),
+  );
+  return out;
+}
 
 async function fetchBuf(path: string) {
   const r = await fetch(`${BASE}${path}`);
@@ -100,7 +118,8 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
   let first = true;
   const multiGroup = new Set(doc.sections.map((x) => x.group).filter(Boolean)).size > 1;
   let prevGroup: string | undefined;
-  for (const s of doc.sections) {
+  const flags = await loadFlags(doc);
+  for (const [si, s] of doc.sections.entries()) {
     const newGroup = multiGroup && s.group && s.group !== prevGroup;
     prevGroup = s.group ?? prevGroup;
     if ((s.newPage || newGroup) && !first) {
@@ -146,8 +165,23 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
       },
       headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold", halign: "center", valign: "middle" },
       columnStyles: Object.fromEntries(
-        s.columns.map((c, i) => [i, { cellWidth: (c.width / totalW) * tableW, halign: c.align ?? "left" }]),
+        s.columns.map((c, i) => [
+          i,
+          { cellWidth: (c.width / totalW) * tableW, halign: c.align ?? "left", ...(i === s.flagCol ? { cellPadding: { top: 0.9, bottom: 0.9, right: 0.9, left: 13 } } : {}) },
+        ]),
       ),
+      didDrawCell: (d) => {
+        if (s.flagCol == null || d.section !== "body" || d.column.index !== s.flagCol) return;
+        const f = flags.get(`${si}:${d.row.index}`);
+        if (!f) return;
+        const h = Math.min(6, d.cell.height - 1.6);
+        pdf.addImage(f.dataUrl, "JPEG", d.cell.x + 2, d.cell.y + (d.cell.height - h) / 2, h * 1.5, h);
+        pdf.setDrawColor(150);
+        pdf.setLineWidth(0.1);
+        pdf.rect(d.cell.x + 2, d.cell.y + (d.cell.height - h) / 2, h * 1.5, h);
+        pdf.setDrawColor(0);
+        pdf.setLineWidth(0.2);
+      },
       didDrawPage: drawHeaderFooter,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -282,28 +316,39 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
   const border = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
   const borders = { top: border, bottom: border, left: border, right: border };
   const PAGE_W = 15400;
-  const mkTable = (s: Section) => {
+  const flagsW = await loadFlags(doc);
+  const mkTable = (s: Section, si: number) => {
     const narrow = s.newPage && s.columns.length <= 3;
     const tw = narrow ? Math.round(PAGE_W * 0.7) : PAGE_W;
     const total = s.columns.reduce((a, c) => a + c.width, 0);
     const widths = s.columns.map((c) => Math.round((c.width / total) * tw));
     const fs = s.fontSize ?? 8;
     const al = (a?: string) => (a === "center" ? AlignmentType.CENTER : a === "right" ? AlignmentType.RIGHT : AlignmentType.LEFT);
-    const cell = (text: string, i: number, headCell: boolean) =>
-      new TableCell({
+    const cell = (text: string, i: number, headCell: boolean, ri = -1) => {
+      const f = !headCell && i === s.flagCol ? flagsW.get(`${si}:${ri}`) : undefined;
+      const p = f
+        ? new Paragraph({
+            children: [
+              new ImageRun({ type: "jpg", data: f.data, transformation: { width: 24, height: 16 } } as never),
+              run(`  ${text}`, { bold: s.boldBody, size: fs }),
+            ],
+          })
+        : para(text, { bold: headCell || s.boldBody, size: fs, align: headCell ? AlignmentType.CENTER : al(s.columns[i].align) });
+      return new TableCell({
         width: { size: widths[i], type: WidthType.DXA },
         borders,
         verticalAlign: VerticalAlign.CENTER,
         margins: { top: 20, bottom: 20, left: 60, right: 60 },
-        children: [para(text, { bold: headCell || s.boldBody, size: fs, align: headCell ? AlignmentType.CENTER : al(s.columns[i].align) })],
+        children: [p],
       });
+    };
     return new Table({
       width: { size: tw, type: WidthType.DXA },
       columnWidths: widths,
       alignment: narrow ? AlignmentType.CENTER : AlignmentType.LEFT,
       rows: [
         new TableRow({ tableHeader: true, children: s.columns.map((c, i) => cell(c.title, i, true)) }),
-        ...s.rows.map((r) => new TableRow({ cantSplit: true, children: r.map((v, i) => cell(v, i, false)) })),
+        ...s.rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((v, i) => cell(v, i, false, ri)) })),
       ],
     });
   };
@@ -328,7 +373,7 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
         pageBreak: s.newPage,
       }),
     );
-    body.push(mkTable(s));
+    body.push(mkTable(s, idx));
     s.notes?.forEach((n) => body.push(para(n, { italics: true, size: 8 })));
   });
 
@@ -356,6 +401,7 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
 export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
+  const flagsX = await loadFlags(doc);
   wb.creator = "Рукоборец";
   const thin = { style: "thin" as const, color: { argb: "FF000000" } };
   const box = { top: thin, left: thin, bottom: thin, right: thin };
@@ -400,6 +446,7 @@ export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
       if (doc.requirements) merged(doc.requirements, font({ italic: true, size: 9 }), "left", 40);
     }
     for (const s of g.sections) {
+      const si = doc.sections.indexOf(s);
       ws.addRow([]);
       merged(s.title, font({ bold: true, size: 11 }), s.newPage ? "center" : "left");
       const hr = ws.addRow(s.columns.map((c) => c.title));
@@ -409,13 +456,20 @@ export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
         c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
         c.border = box;
       });
-      s.rows.forEach((row) => {
+      s.rows.forEach((row, ri) => {
         const r = ws.addRow(row.map((v) => (/^\d+(\.\d+)?$/.test(v) ? Number(v) : v.replace("\n", " "))));
+        const f = s.flagCol != null ? flagsX.get(`${si}:${ri}`) : undefined;
+        if (f) {
+          const img = wb.addImage({ base64: f.dataUrl, extension: "jpeg" });
+          ws.addImage(img, { tl: { col: s.flagCol! + 0.08, row: r.number - 1 + 0.18 }, ext: { width: 27, height: 18 }, editAs: "oneCell" });
+          r.height = 20;
+        }
         r.eachCell({ includeEmpty: true }, (c, i) => {
           if (i > s.columns.length) return;
           c.font = font({ bold: s.boldBody, size: 10 });
           c.alignment = { horizontal: s.columns[i - 1].align ?? "left", vertical: "middle", wrapText: true };
           c.border = box;
+          if (f && i - 1 === s.flagCol) c.alignment = { ...c.alignment, indent: 4 };
           if (s.columns[i - 1].title.startsWith("Вес")) c.numFmt = "0.00";
         });
       });

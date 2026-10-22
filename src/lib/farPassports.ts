@@ -1,4 +1,5 @@
 import { Gender } from "./arm";
+import { flagUrl } from "./flags";
 
 export interface FarPassport {
   id: string;
@@ -138,7 +139,7 @@ export const fmtFarBirth = (d: string) => (d ? d.split("-").reverse().join(".") 
 
 const SITE = "https://baza.armwrestling-ru.ru";
 export const farPhotoUrl = (id: string) => `${SITE}/far/far_photos/${id.slice(0, 6)}.jpg`;
-export const farFlagUrl = (region: string) => `${SITE}/far/rus_flags/${encodeURIComponent(region)}.jpg`;
+export const farFlagUrl = (region: string) => flagUrl(region) ?? `${SITE}/far/rus_flags/${encodeURIComponent(region)}.jpg`;
 export const farSiteUrl = (id: string) => `${SITE}/index.php?page=edit_competitor&group=far&number=${id}`;
 
 const PENDING = "armsport-far-register";

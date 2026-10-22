@@ -142,6 +142,8 @@ export interface Tournament {
   showFarPhotoBoard?: boolean;
   /** Флаг субъекта РФ на табло. */
   showFlagBoard?: boolean;
+  /** Флаги субъектов РФ в командном зачёте протоколов. */
+  showFlagProtocol?: boolean;
   restShort?: number;
   restLong?: number;
   system?: System;

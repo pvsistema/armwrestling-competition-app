@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import FarFace from "./FarFace";
 import FarFlag from "./FarFlag";
+import BoardTeam from "./BoardTeam";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
 import { globalBreak, handStage, pendingQueue, tableBreak, waitingSecond } from "@/lib/queue";
 import HandBreak from "./HandBreak";
@@ -26,7 +27,8 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   const classMap = useClassMap();
   const [now, setNow] = useState(new Date());
   const tables = Math.max(1, tournament.tables);
-  const focusTable = focus !== "all" && focus <= tables ? focus : "all";
+  const teamView = focus === "team";
+  const focusTable = typeof focus === "number" && focus <= tables ? focus : "all";
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -151,7 +153,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           ) : null}
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {tables > 1 && focusTable !== "all" && (
+          {(teamView || (tables > 1 && focusTable !== "all")) && (
             <button className="pill" onClick={() => onFocus("all")}>
               <Icon name="LayoutGrid" size={16} /> Все столы
             </button>
@@ -167,7 +169,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         </div>
       </header>
 
-      {focusTable === "all" && tables > 1 && globalBreak(matches, tournament) && !lastOf("all").some((m) => fresh(m)) ? (
+      {teamView ? (
+        <BoardTeam standalone={standalone} />
+      ) : focusTable === "all" && tables > 1 && globalBreak(matches, tournament) && !lastOf("all").some((m) => fresh(m)) ? (
         <HandBreak first={stage.first} second={stage.second} size="hero" />
       ) : focusTable === "all" && tables > 1 ? (
         <div

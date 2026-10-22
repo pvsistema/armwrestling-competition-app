@@ -35,6 +35,8 @@ export interface Section {
   newPage?: boolean;
   fontSize?: number;
   boldBody?: boolean;
+  /** Колонка с названием субъекта РФ — перед ним печатается флаг. */
+  flagCol?: number;
   /** Раздел протокола: «Левая рука», «Правая рука», «Двоеборье» — с новой страницы и отдельным листом Excel. */
   group?: string;
 }
@@ -275,6 +277,7 @@ export function buildProtocol(
           : "Командный зачет среди Федеральных округов Российской Федерации",
       newPage: true,
       fontSize: 11,
+      flagCol: by === "team" && (t.showFlagProtocol ?? true) ? 1 : undefined,
       columns: [
         { title: "Место", width: 12, align: "center" },
         { title: by === "team" ? "Субъект Российской Федерации" : "Федеральные округа Российской Федерации", width: 70 },

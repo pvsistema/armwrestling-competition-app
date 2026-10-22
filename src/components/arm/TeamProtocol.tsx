@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { DISTRICT_FULL, TeamBy, tMode, tPoints, teamStandings } from "@/lib/arm";
 import { cn } from "@/lib/utils";
+import { Flag } from "./FarFlag";
 
 export default function TeamProtocol({ onlyDone }: { onlyDone: boolean }) {
   const { brackets, matches, amap, tournament, setTournament } = useStore();
@@ -69,9 +70,14 @@ export default function TeamProtocol({ onlyDone }: { onlyDone: boolean }) {
                 <tr key={r.team} className="border-b border-line/60 last:border-0 print:border-black/40">
                   <td className="px-4 py-2 font-mono font-semibold">{r.placeLabel}</td>
                   <td className="px-2 py-2">
-                    <div className="font-medium">{by === "district" ? DISTRICT_FULL[r.team] ?? r.team : r.team}</div>
-                    <div className="text-xs text-panel-muted print:hidden">участников: {r.members}</div>
-                    {r.tieNote && <div className="text-xs text-panel-muted print:text-black">{r.tieNote}</div>}
+                    <div className="flex items-center gap-2.5">
+                      {by === "team" && (tournament.showFlagProtocol ?? true) && <Flag team={r.team} className="h-6 w-9" />}
+                      <div className="min-w-0">
+                        <div className="font-medium">{by === "district" ? DISTRICT_FULL[r.team] ?? r.team : r.team}</div>
+                        <div className="text-xs text-panel-muted print:hidden">участников: {r.members}</div>
+                        {r.tieNote && <div className="text-xs text-panel-muted print:text-black">{r.tieNote}</div>}
+                      </div>
+                    </div>
                   </td>
                   {mode === "hands" && (
                     <>

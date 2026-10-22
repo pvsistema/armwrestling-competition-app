@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 const FKEY = "armsport-board-focus";
-export type BoardFocus = number | "all";
+export type BoardFocus = number | "all" | "team";
 
 function read(): BoardFocus {
   const v = localStorage.getItem(FKEY);
+  if (v === "team") return "team";
   const n = v ? parseInt(v, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : "all";
 }

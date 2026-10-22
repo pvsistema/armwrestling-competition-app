@@ -13,6 +13,7 @@ function BoardScreen() {
         toggleFullscreen();
       }
       if (e.key === "Escape" || e.key === "0") setFocus("all");
+      if (["k", "K", "к", "К"].includes(e.key)) setFocus("team");
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= 8) setFocus(n);
     };
