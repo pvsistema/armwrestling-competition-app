@@ -104,7 +104,7 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
     const athletes = b.athletes.map((id, i) => ({ n: i + 1, a: inp.amap[id], id }));
     const num: Record<string, number> = Object.fromEntries(athletes.map((x) => [x.id, x.n]));
     const name = (id: string) => `${num[id] ?? ""}. ${inp.amap[id]?.name ?? ""}`;
-    const showFar = (inp.tournament.showFar ?? true) && athletes.some((x) => x.a?.farId);
+    const showFar = (inp.tournament.showFar ?? true) && athletes.some((x) => x.a?.farId || x.a?.card);
 
     pdf.setFont("NS", "bold");
     pdf.setFontSize(10);
@@ -113,13 +113,13 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
       startY: 40,
       margin: { left: M, right: M, top: 14, bottom: 22 },
       theme: "grid",
-      head: [["№", "Фамилия, имя", ...(showFar ? ["№ паспорта ФАР"] : []), "Дата рожд.", "Звание", "Команда", "Вес", "Пораж.", "Место"]],
+      head: [["№", "Фамилия, имя", ...(showFar ? ["№ паспорта ФАР / карт."] : []), "Дата рожд.", "Звание", "Команда", "Вес", "Пораж.", "Место"]],
       body: athletes.map(({ n, a, id }) => {
         const l = st[id]?.losses ?? 0;
         return [
           String(n),
           a?.name ?? "",
-          ...(showFar ? [a?.farId ?? ""] : []),
+          ...(showFar ? [a?.farId ?? a?.card?.id ?? ""] : []),
           a ? fmtBirth(a) : "",
           a?.rank ?? "",
           a?.club || a?.city || "",

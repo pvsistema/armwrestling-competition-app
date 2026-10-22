@@ -23,6 +23,8 @@ export interface Athlete {
   district?: string;
   /** Номер паспорта ФАР. */
   farId?: string;
+  /** Карточка участника (для спортсменов без паспорта ФАР): номер и срок действия. */
+  card?: { id: string; from: string; to: string };
   upClass?: boolean;
   absolute?: boolean;
   /** Совершеннолетний юниор по желанию заявлен также во взрослую категорию. */

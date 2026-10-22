@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { FarBase, FarPassport, farFlagUrl, fmtFarBirth, loadFar, onFarChange, requestFarRegister, searchFar } from "@/lib/farPassports";
 import FarCard from "./FarCard";
 import FarUpdateButton from "./FarUpdateButton";
+import CardsList from "./CardsList";
 
 const ORDER = ["Город Москва", "Город Санкт-Петербург", "ДФО", "ПФО", "СЗФО", "СКФО", "СФО", "УФО", "ЦФО", "ЮФО"];
 const groupTitle = (d: string) => (d.startsWith("Город") ? `${DISTRICT_FULL[d] ?? d}` : DISTRICT_FULL[d] ?? (d || "Без округа"));
@@ -22,6 +23,7 @@ export default function FarSection({ onRegistered }: Props) {
   const [region, setRegion] = useState<string | null>(null);
   const [card, setCard] = useState<FarPassport | null>(null);
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"far" | "cards">("far");
 
   useEffect(() => {
     loadFar().then(setBase, () => setFailed(true));
@@ -75,6 +77,24 @@ export default function FarSection({ onRegistered }: Props) {
           <b>паспорта ФАР</b>
         </div>
         <div className="flex flex-col gap-4 p-4 md:p-5">
+          <div className="flex flex-wrap gap-2 border-b border-line pb-3">
+            <button className={cn("pill", tab === "far" && "pill-on")} onClick={() => setTab("far")}>
+              <Icon name="BadgeCheck" size={15} /> Паспорта ФАР
+            </button>
+            <button className={cn("pill", tab === "cards" && "pill-on")} onClick={() => setTab("cards")}>
+              <Icon name="IdCard" size={15} /> Карточки участников
+            </button>
+          </div>
+          {tab === "cards" && (
+            <>
+              <div className="relative">
+                <Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-panel-muted" />
+                <input className="field !rounded-full pl-10" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск: фамилия, № карточки, регион" />
+              </div>
+              <CardsList q={q} onRegistered={onRegistered} />
+            </>
+          )}
+          {tab === "far" && (<>
           <div className="flex flex-wrap items-center gap-2">
             {(region || card) && (
               <button className="pill" onClick={() => (card ? setCard(null) : setRegion(null))}>
@@ -184,6 +204,7 @@ export default function FarSection({ onRegistered }: Props) {
               </div>
             </div>
           )}
+          </>)}
         </div>
       </div>
     </section>

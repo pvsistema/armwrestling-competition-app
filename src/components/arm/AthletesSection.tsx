@@ -9,6 +9,8 @@ import FarUpdateButton from "./FarUpdateButton";
 import { FAR_REGISTER_EVENT, FarPassport, fmtFarBirth, loadFar, matchFar, takeFarRegister } from "@/lib/farPassports";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import FarCard from "./FarCard";
+import ParticipantCard from "./ParticipantCard";
+import { CARD_REGISTER_EVENT, PCard, cardRef, cardValid, fmtDate, issueCard, loadCards, onCardsChange, takeCardRegister } from "@/lib/participantCards";
 
 const EMPTY = {
   name: "",
@@ -23,6 +25,8 @@ const EMPTY = {
   para: "" as ParaClass | "",
   adult: false,
   farId: "",
+  cardId: "",
+  issue: true,
 };
 
 export default function AthletesSection() {
@@ -61,7 +65,7 @@ export default function AthletesSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [athletes, q, filter, tournament, groups, year]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const er: Record<string, string> = {};
     if (f.name.trim().split(/\s+/).length < 2) er.name = "Фамилия и имя";
@@ -74,6 +78,24 @@ export default function AthletesSection() {
     if (!f.hands.length) er.hands = "Хотя бы одна рука";
     setErr(er);
     if (Object.keys(er).length) return;
+    let card: Athlete["card"];
+    if (!f.farId && f.cardId) {
+      const c = cards.get(f.cardId);
+      if (c) card = cardRef(c);
+    } else if (!f.farId && f.issue) {
+      const c = await issueCard({
+        name: f.name.trim(),
+        gender: f.gender,
+        birthYear: by,
+        birthDate,
+        rank: f.rank || undefined,
+        region: f.club.trim(),
+        city: f.city.trim() || undefined,
+        district: f.district || undefined,
+      });
+      card = cardRef(c);
+      toast({ title: `Выдана карточка участника № ${c.id}`, description: `Действует до ${fmtDate(c.to)}.` });
+    }
     addAthlete({
       name: f.name.trim(),
       gender: f.gender,
@@ -88,9 +110,10 @@ export default function AthletesSection() {
       para: f.para || undefined,
       adult: (preview?.canAdult && f.adult) || undefined,
       farId: f.farId || undefined,
+      card,
     });
     toast({ title: `Участник добавлен: ${f.name.trim()}`, description: preview?.text ?? "" });
-    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district, para: f.para });
+    setF({ ...EMPTY, gender: f.gender, club: f.club, city: f.city, district: f.district, para: f.para, issue: f.issue });
   };
 
   const preview = useMemo(() => {
@@ -102,11 +125,53 @@ export default function AthletesSection() {
     return distribution(tmp, groups, tournament);
   }, [f.birthYear, f.weight, f.gender, f.hands, f.para, f.adult, groups, tournament, year]);
 
+  const [cards, setCards] = useState<Map<string, PCard>>(new Map());
+  useEffect(() => {
+    const load = () => loadCards().then((m) => setCards(new Map(m)));
+    load();
+    return onCardsChange(load);
+  }, []);
+  const [cardOpen, setCardOpen] = useState<string | null>(null);
+
+  const pickCard = (c: PCard) => {
+    setF((prev) => ({
+      ...prev,
+      name: c.name,
+      farId: "",
+      cardId: c.id,
+      gender: c.gender,
+      birthYear: c.birthDate ? fmtDate(c.birthDate) : String(c.birthYear),
+      club: c.region || prev.club,
+      city: c.city || prev.city,
+      rank: c.rank && RANKS.includes(c.rank) ? c.rank : prev.rank,
+      district: c.district || prev.district,
+    }));
+    if (!cardValid(c)) toast({ title: `Карточка ${c.id} просрочена`, description: "Откройте её и нажмите «Продлить» — или участник зарегистрируется без действующей карточки.", variant: "destructive" });
+  };
+
+  useEffect(() => {
+    const take = () => {
+      const id = takeCardRegister();
+      if (!id) return;
+      loadCards().then((m) => {
+        const c = m.get(id);
+        if (!c) return;
+        setF({ ...EMPTY });
+        pickCard(c);
+        toast({ title: `Карточка участника: ${c.name}`, description: "Проверьте данные, укажите руки и нажмите «Зарегистрировать»." });
+      });
+    };
+    take();
+    window.addEventListener(CARD_REGISTER_EVENT, take);
+    return () => window.removeEventListener(CARD_REGISTER_EVENT, take);
+  }, []);
+
   const pickFar = (p: FarPassport) =>
     setF((prev) => ({
       ...prev,
       name: p.name,
       farId: p.id,
+      cardId: "",
       gender: p.gender || prev.gender,
       birthYear: p.birthDate ? fmtFarBirth(p.birthDate) : prev.birthYear,
       club: p.region || prev.club,
@@ -189,6 +254,16 @@ export default function AthletesSection() {
           {farCard && <FarCard p={farCard} />}
         </DialogContent>
       </Dialog>
+      <Dialog open={!!cardOpen} onOpenChange={(o) => !o && setCardOpen(null)}>
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-auto">
+          <DialogTitle className="sr-only">Карточка участника</DialogTitle>
+          {cardOpen && cards.get(cardOpen) ? (
+            <ParticipantCard c={cards.get(cardOpen)!} inTournament onRemoved={() => setCardOpen(null)} />
+          ) : (
+            cardOpen && <p className="text-panel-muted">Карточка № {cardOpen} не найдена на этом компьютере.</p>
+          )}
+        </DialogContent>
+      </Dialog>
       <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg bg-frame p-2.5">
         <div className="win flex-1">
           <div className="win-bar">
@@ -205,7 +280,9 @@ export default function AthletesSection() {
                 farId={f.farId}
                 onChange={(v) => setF((p) => ({ ...p, name: v }))}
                 onPick={pickFar}
-                onClearFar={() => setF((p) => ({ ...p, farId: "" }))}
+                onClearFar={() => setF((p) => ({ ...p, farId: "", cardId: "" }))}
+                cardId={f.cardId}
+                onPickCard={pickCard}
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -318,6 +395,36 @@ export default function AthletesSection() {
                 ))}
               </div>
             </Field>
+            {!f.farId &&
+              (f.cardId ? (
+                <div className="flex items-center gap-2 rounded-[12px] border border-copper/50 bg-copper/10 px-3 py-2.5 text-sm">
+                  <Icon name="IdCard" size={17} className="shrink-0 text-copper" />
+                  <span>
+                    Карточка участника № <b className="font-mono">{f.cardId}</b>
+                    {cards.get(f.cardId) && (
+                      <span className={cn("ml-1 text-xs", cardValid(cards.get(f.cardId)) ? "text-panel-muted" : "font-semibold text-corner-red")}>
+                        {cardValid(cards.get(f.cardId)) ? `до ${fmtDate(cards.get(f.cardId)!.to)}` : "срок истёк"}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setF({ ...f, issue: !f.issue })}
+                  className={cn(
+                    "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                    f.issue ? "border-copper bg-copper/10 text-foreground" : "border-line text-panel-muted hover:text-foreground",
+                  )}
+                  title="Для спортсменов без паспорта ФАР. Действует с сегодняшнего дня до 31 декабря."
+                >
+                  <Icon name={f.issue ? "SquareCheck" : "Square"} size={17} className="shrink-0 text-copper" />
+                  <span>
+                    Нет паспорта ФАР — выдать карточку участника
+                    <span className="block text-xs font-normal text-panel-muted">действует до 31.12.{new Date().getFullYear()}</span>
+                  </span>
+                </button>
+              ))}
             <button type="submit" className="btn-blue mt-2 w-full py-3.5">
               <Icon name="UserPlus" size={18} /> Зарегистрировать
             </button>
@@ -409,6 +516,22 @@ export default function AthletesSection() {
                     onPatch={(p) => updateAthlete(a.id, p)}
                     onOut={(r) => withdraw(a.id, r)}
                     onFar={openFar}
+                    onCard={setCardOpen}
+                    onIssue={async () => {
+                      const c = await issueCard({
+                        name: a.name,
+                        gender: a.gender,
+                        birthYear: a.birthYear,
+                        birthDate: a.birthDate,
+                        rank: a.rank,
+                        region: a.club,
+                        city: a.city || undefined,
+                        district: a.district,
+                      });
+                      updateAthlete(a.id, { card: cardRef(c) });
+                      toast({ title: `Выдана карточка участника № ${c.id}`, description: `${a.name}, действует до ${fmtDate(c.to)}.` });
+                    }}
+                    cardOk={!a.card || cardValid(cards.get(a.card.id) ?? a.card)}
                     onWeight={(w) => updateAthlete(a.id, { weight: w })}
                     onHands={(h) => updateAthlete(a.id, { hands: h })}
                     onRemove={() => removeAthlete(a.id)}
@@ -486,6 +609,9 @@ function Row({
   onPatch,
   onOut,
   onFar,
+  onCard,
+  onIssue,
+  cardOk,
 }: {
   a: Athlete;
   classLabel: string;
@@ -501,6 +627,9 @@ function Row({
   onPatch: (p: Partial<Athlete>) => void;
   onOut: (r: OutReason | null) => void;
   onFar: (id: string) => void;
+  onCard: (id: string) => void;
+  onIssue: () => void;
+  cardOk: boolean;
 }) {
   const [w, setW] = useState(a.weight == null ? "" : String(a.weight).replace(".", ","));
   const commit = () => {
@@ -525,6 +654,31 @@ function Row({
           >
             <Icon name="BadgeCheck" size={12} />
             ФАР
+          </button>
+        )}
+        {!a.farId && a.card && (
+          <button
+            type="button"
+            onClick={() => onCard(a.card!.id)}
+            className={cn(
+              "ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1 align-middle font-mono text-[10px] hover:bg-copper/10",
+              cardOk ? "text-copper" : "text-corner-red",
+            )}
+            title={`Карточка участника № ${a.card.id}${cardOk ? `, до ${fmtDate(a.card.to)}` : " — срок истёк"} — открыть`}
+          >
+            <Icon name="IdCard" size={12} />
+            {cardOk ? "КАРТ." : "КАРТ. !"}
+          </button>
+        )}
+        {!a.farId && !a.card && (
+          <button
+            type="button"
+            onClick={onIssue}
+            className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-dashed border-copper/60 px-1.5 align-middle font-mono text-[10px] text-copper hover:bg-copper/10"
+            title="Нет паспорта ФАР — выдать карточку участника до 31 декабря"
+          >
+            <Icon name="Plus" size={11} />
+            карточка
           </button>
         )}
         {a.out && (

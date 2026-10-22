@@ -72,9 +72,9 @@ export function fmtDateRange(from?: string, to?: string) {
 
 const kg = (w: number | null | undefined) => (w == null ? "" : w.toFixed(2));
 const sex = (a?: Athlete) => (a?.gender === "F" ? "жен." : "муж.");
-const FAR_COL: Column = { title: "№ паспорта ФАР", width: 11, align: "center" };
+const FAR_COL: Column = { title: "№ паспорта ФАР / карточки", width: 11, align: "center" };
 const farCols = (show: boolean): Column[] => (show ? [FAR_COL] : []);
-const farCell = (show: boolean, a?: Athlete): string[] => (show ? [a?.farId ?? ""] : []);
+const farCell = (show: boolean, a?: Athlete): string[] => (show ? [a?.farId ?? a?.card?.id ?? ""] : []);
 
 const handNotes = (rows: PlaceRow[]) =>
   rows.filter((r) => r.note).map((r) => `${r.place} место — ${r.note}`);
@@ -164,7 +164,7 @@ export function buildProtocol(
   }
 
   const inGrid = new Set(used.flatMap((b) => b.athletes));
-  const showFar = (t.showFar ?? true) && s.athletes.some((a) => a.farId && inGrid.has(a.id));
+  const showFar = (t.showFar ?? true) && s.athletes.some((a) => (a.farId || a.card) && inGrid.has(a.id));
   const people = s.athletes.filter((a) => inGrid.has(a.id) || !used.length);
   const men = people.filter((a) => a.gender === "M").length;
   const teams = Array.from(new Set(people.map((a) => a.club.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
