@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { useStore } from "@/lib/store";
 
-export type Section = "home" | "athletes" | "classes" | "bracket" | "judge" | "results" | "board" | "far" | "fights" | "stream";
+export type Section = "home" | "athletes" | "classes" | "bracket" | "schedule" | "judge" | "results" | "board" | "far" | "fights" | "stream";
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "House" },
   { id: "classes", label: "Категории", icon: "Scale" },
   { id: "athletes", label: "Участники", icon: "Users" },
   { id: "bracket", label: "Сетка", icon: "GitFork" },
+  { id: "schedule", label: "Расписание", icon: "CalendarClock" },
   { id: "judge", label: "Пульт судьи", icon: "Gavel" },
   { id: "results", label: "Протоколы", icon: "FileText" },
   { id: "board", label: "Табло", icon: "Monitor" },

@@ -4,6 +4,7 @@ import JudgePanel from "@/components/arm/JudgePanel";
 import AthletesSection from "@/components/arm/AthletesSection";
 import ClassesSection from "@/components/arm/ClassesSection";
 import BracketSection from "@/components/arm/BracketSection";
+import ScheduleSection from "@/components/arm/ScheduleSection";
 import ResultsSection from "@/components/arm/ResultsSection";
 import BoardSection from "@/components/arm/BoardSection";
 import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
@@ -85,6 +86,7 @@ function Shell() {
           {section === "athletes" && !locked && <AthletesSection />}
           {section === "classes" && <ClassesSection onNext={() => setSection("athletes")} />}
           {section === "bracket" && !locked && <BracketSection />}
+          {section === "schedule" && <ScheduleSection onGoBracket={() => setSection("bracket")} />}
           {section === "results" && <ResultsSection />}
           {section === "board" && <BoardSection />}
           {section === "far" && <FarSection onRegistered={() => setSection("athletes")} />}

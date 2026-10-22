@@ -150,6 +150,10 @@ export interface Tournament {
   showFlagProtocol?: boolean;
   restShort?: number;
   restLong?: number;
+  /** Расписание: начало соревнований (ЧЧ:ММ), минут на схватку, перерыв между руками. */
+  scheduleStart?: string;
+  matchMin?: number;
+  handBreakMin?: number;
   system?: System;
   rrMax?: number;
   olympicThird?: boolean;
