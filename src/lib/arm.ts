@@ -134,6 +134,8 @@ export interface Tournament {
   teamBestOnly?: boolean;
   judges?: Judge[];
   showLogo?: boolean;
+  /** Колонка «№ паспорта ФАР» в протоколах и стартовых листах. */
+  showFar?: boolean;
   restShort?: number;
   restLong?: number;
   system?: System;

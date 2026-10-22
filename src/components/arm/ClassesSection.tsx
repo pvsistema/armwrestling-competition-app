@@ -92,6 +92,14 @@ export default function ClassesSection({ onNext }: { onNext?: () => void }) {
             >
               <Icon name={(tournament.showLogo ?? true) ? "SquareCheck" : "Square"} size={15} /> Эмблема ФАР в шапке, протоколах и на табло
             </button>
+            <button
+              type="button"
+              className={cn("pill justify-start", (tournament.showFar ?? true) && "pill-on")}
+              onClick={() => setTournament({ showFar: !(tournament.showFar ?? true) })}
+              title="Колонка появляется, если хотя бы у одного участника указан номер паспорта"
+            >
+              <Icon name={(tournament.showFar ?? true) ? "SquareCheck" : "Square"} size={15} /> № паспорта ФАР в протоколах и стартовых листах
+            </button>
             <RestSettings />
             <L label="Требования для разрядов (печатается в протоколе)">
               <textarea className="field min-h-[72px] py-2" value={tournament.requirements ?? ""} onChange={(e) => setTournament({ requirements: e.target.value })} placeholder="КМС — 1 место при не менее 8 участниках в категории…" />

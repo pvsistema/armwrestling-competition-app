@@ -69,6 +69,10 @@ export function fmtDateRange(from?: string, to?: string) {
 
 const kg = (w: number | null | undefined) => (w == null ? "" : w.toFixed(2));
 const sex = (a?: Athlete) => (a?.gender === "F" ? "жен." : "муж.");
+const FAR_COL: Column = { title: "№ паспорта ФАР", width: 11, align: "center" };
+const farCols = (show: boolean): Column[] => (show ? [FAR_COL] : []);
+const farCell = (show: boolean, a?: Athlete): string[] => (show ? [a?.farId ?? ""] : []);
+
 const placeLabel = (rows: { place: number }[], i: number) => String(rows[i].place);
 
 function classTitle(c: WeightClass | undefined) {
@@ -81,7 +85,7 @@ function classTitle(c: WeightClass | undefined) {
 /** part: hand — протокол одной руки; biathlon — общий (двоеборье + командный); full — всё. */
 export type ProtocolPart = "left" | "right" | "biathlon" | "full";
 
-function handSections(s: State, used: Bracket[], classMap: Record<string, WeightClass>, amap: Record<string, Athlete>, pts: number[], hand?: Hand): Section[] {
+function handSections(s: State, used: Bracket[], classMap: Record<string, WeightClass>, amap: Record<string, Athlete>, pts: number[], showFar: boolean, hand?: Hand): Section[] {
   const order = (b: Bracket) => Object.keys(classMap).indexOf(b.classKey);
   const hOrder = handsInOrder(s.tournament);
   return [...used]
@@ -97,6 +101,7 @@ function handSections(s: State, used: Bracket[], classMap: Record<string, Weight
         columns: [
           { title: "Место", width: 6, align: "center" },
           { title: "Фамилия, имя, отчество", width: 22 },
+          ...farCols(showFar),
           { title: "Пол, дата рождения", width: 10, align: "center" },
           { title: "Спортивное звание", width: 8, align: "center" },
           { title: "Субъект Российской Федерации", width: 20 },
@@ -110,6 +115,7 @@ function handSections(s: State, used: Bracket[], classMap: Record<string, Weight
           return [
             placeLabel(rows, i),
             a?.name ?? "",
+            ...farCell(showFar, a),
             `${sex(a)}\n${a ? fmtBirth(a) : ""}`,
             a?.rank ?? "",
             a?.club ?? "",
@@ -152,6 +158,7 @@ export function buildProtocol(
   }
 
   const inGrid = new Set(used.flatMap((b) => b.athletes));
+  const showFar = (t.showFar ?? true) && s.athletes.some((a) => a.farId && inGrid.has(a.id));
   const people = s.athletes.filter((a) => inGrid.has(a.id) || !used.length);
   const men = people.filter((a) => a.gender === "M").length;
   const teams = Array.from(new Set(people.map((a) => a.club.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
@@ -164,9 +171,9 @@ export function buildProtocol(
   const sections: Section[] = [];
 
   if (part === "left" || part === "right") {
-    sections.push(...handSections(s, used, classMap, amap, pts, part));
+    sections.push(...handSections(s, used, classMap, amap, pts, showFar, part));
   } else if (part === "full" && mode === "biathlon") {
-    sections.push(...handSections(s, used, classMap, amap, pts));
+    sections.push(...handSections(s, used, classMap, amap, pts, showFar));
   }
 
   if (part !== "left" && part !== "right" && mode === "biathlon") {
@@ -183,6 +190,7 @@ export function buildProtocol(
         columns: [
           { title: "Место по\n«двоеборью»", width: 8.5, align: "center" },
           { title: "Фамилия, имя, отчество", width: 17.5 },
+          ...farCols(showFar),
           { title: "Пол, дата рождения", width: 9, align: "center" },
           { title: "Спортивное звание", width: 7, align: "center" },
           { title: "Субъект Российской Федерации", width: 15 },
@@ -199,6 +207,7 @@ export function buildProtocol(
           return [
             placeLabel(rows, i),
             a?.name ?? "",
+            ...farCell(showFar, a),
             `${sex(a)}\n${a ? fmtBirth(a) : ""}`,
             a?.rank ?? "",
             a?.club ?? "",
@@ -226,6 +235,7 @@ export function buildProtocol(
           columns: [
             { title: "Место", width: 6, align: "center" },
             { title: "Фамилия, имя, отчество", width: 22 },
+            ...farCols(showFar),
             { title: "Пол, дата рождения", width: 10, align: "center" },
             { title: "Спортивное звание", width: 8, align: "center" },
             { title: "Субъект Российской Федерации", width: 20 },
@@ -239,6 +249,7 @@ export function buildProtocol(
             return [
               placeLabel(rows, i),
               a?.name ?? "",
+              ...farCell(showFar, a),
               `${sex(a)}\n${a ? fmtBirth(a) : ""}`,
               a?.rank ?? "",
               a?.club ?? "",

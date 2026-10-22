@@ -227,7 +227,10 @@ export default function ResultsSection() {
                               {r.place}
                             </span>
                           </td>
-                          <td className="px-2 py-2 font-medium">{a?.name}</td>
+                          <td className="px-2 py-2 font-medium">
+                            {a?.name}
+                            {a?.farId && (tournament.showFar ?? true) && <div className="font-mono text-[11px] font-normal text-panel-muted">ФАР № {a.farId}</div>}
+                          </td>
                           <td className="px-2 py-2 text-xs text-panel-muted print:text-black">
                             {a ? fmtBirth(a) : ""}
                             {a?.rank ? ` · ${a.rank}` : ""}

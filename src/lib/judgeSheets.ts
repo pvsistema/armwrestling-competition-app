@@ -1,4 +1,5 @@
 import { Hand, handsInOrder, Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABEL, HAND_ORDER, Match, Tournament, WeightClass, fmtBirth, standings } from "./arm";
+import type { Styles } from "jspdf-autotable";
 import { fmtDateRange } from "./protocolModel";
 import { FOLDERS, saveFile } from "./saveFolder";
 
@@ -103,6 +104,7 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
     const athletes = b.athletes.map((id, i) => ({ n: i + 1, a: inp.amap[id], id }));
     const num: Record<string, number> = Object.fromEntries(athletes.map((x) => [x.id, x.n]));
     const name = (id: string) => `${num[id] ?? ""}. ${inp.amap[id]?.name ?? ""}`;
+    const showFar = (inp.tournament.showFar ?? true) && athletes.some((x) => x.a?.farId);
 
     pdf.setFont("NS", "bold");
     pdf.setFontSize(10);
@@ -111,23 +113,36 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
       startY: 40,
       margin: { left: M, right: M, top: 14, bottom: 22 },
       theme: "grid",
-      head: [["№", "Фамилия, имя", "Дата рожд.", "Звание", "Команда", "Вес", "Пораж.", "Место"]],
+      head: [["№", "Фамилия, имя", ...(showFar ? ["№ паспорта ФАР"] : []), "Дата рожд.", "Звание", "Команда", "Вес", "Пораж.", "Место"]],
       body: athletes.map(({ n, a, id }) => {
         const l = st[id]?.losses ?? 0;
-        return [String(n), a?.name ?? "", a ? fmtBirth(a) : "", a?.rank ?? "", a?.club || a?.city || "", kg(a?.weight), l ? Array(Math.min(2, l)).fill("×").join(" ") : "", ""];
+        return [
+          String(n),
+          a?.name ?? "",
+          ...(showFar ? [a?.farId ?? ""] : []),
+          a ? fmtBirth(a) : "",
+          a?.rank ?? "",
+          a?.club || a?.city || "",
+          kg(a?.weight),
+          l ? Array(Math.min(2, l)).fill("×").join(" ") : "",
+          "",
+        ];
       }),
       styles: baseStyles,
       headStyles,
-      columnStyles: {
-        0: { cellWidth: 8, halign: "center" },
-        1: { cellWidth: 52, fontStyle: "bold" },
-        2: { cellWidth: 20, halign: "center" },
-        3: { cellWidth: 16, halign: "center" },
-        4: { cellWidth: "auto" },
-        5: { cellWidth: 14, halign: "center" },
-        6: { cellWidth: 15, halign: "center" },
-        7: { cellWidth: 13, halign: "center" },
-      },
+      columnStyles: Object.fromEntries(
+        [
+          { cellWidth: 8, halign: "center" },
+          { cellWidth: showFar ? 44 : 52, fontStyle: "bold" },
+          ...(showFar ? [{ cellWidth: 25, halign: "center", fontSize: 7.5 }] : []),
+          { cellWidth: showFar ? 18 : 20, halign: "center" },
+          { cellWidth: showFar ? 14 : 16, halign: "center" },
+          { cellWidth: "auto" },
+          { cellWidth: 13, halign: "center" },
+          { cellWidth: showFar ? 13 : 15, halign: "center" },
+          { cellWidth: showFar ? 12 : 13, halign: "center" },
+        ].map((c, i) => [i, c as Partial<Styles>]),
+      ),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let y = (pdf as any).lastAutoTable.finalY + 7;
