@@ -600,6 +600,25 @@ export function deciderWinner(matches: Match[], classKey: string, x: string, y: 
   );
   return m?.winner ?? null;
 }
+export function deciderMatch(matches: Match[], classKey: string, x: string, y: string): Match | undefined {
+  return matches.find(
+    (m) => m.group === "X" && m.key.startsWith(`${classKey}|`) && ((m.a === x && m.b === y) || (m.a === y && m.b === x)),
+  );
+}
+
+/** Строка «Решающий поединок» для протокола: пара, рука по жребию, результат. */
+export function deciderLine(matches: Match[], classKey: string, x: string, y: string, athletes: Record<string, Athlete>): string | null {
+  const m = deciderMatch(matches, classKey, x, y);
+  if (!m) return null;
+  const hand = m.key.split("|")[1] as Hand;
+  const n = (id: string) => athletes[id]?.name ?? "";
+  const head = `Решающий поединок (п. 2.6 Правил): ${n(m.a)} — ${n(m.b)}, ${HAND_LABEL[hand]} рука (по жребию)`;
+  if (!m.winner) return `${head}. Назначен, ждёт на пульте судьи.`;
+  const loser = m.winner === m.a ? m.b : m.a;
+  const how = m.how && m.how !== "pin" ? ` (${HOW_LABEL[m.how]})` : "";
+  return `${head}. Победил ${n(m.winner)}${how}, ${n(loser)} — ниже.`;
+}
+
 export function hasDecider(matches: Match[], classKey: string, x: string, y: string) {
   return matches.some(
     (m) => m.group === "X" && m.key.startsWith(`${classKey}|`) && ((m.a === x && m.b === y) || (m.a === y && m.b === x)),
@@ -656,12 +675,12 @@ function placesRoundRobin(bracket: Bracket, matches: Match[], athletes: Record<s
     }
     const d = deciderWinner(matches, bracket.classKey, x, y);
     if (d) {
-      out[i].note = `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
+      out[i].note = deciderLine(matches, bracket.classKey, x, y, athletes) ?? `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
       out[i].rule = "2.6";
     } else {
       out[i].place = out[i - 1].place;
       out[i].decider = x;
-      out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+      out[i].note = deciderLine(matches, bracket.classKey, x, y, athletes) ?? `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
       out[i].rule = "2.6";
     }
   }
@@ -752,12 +771,12 @@ export function places(
       out[i].rule = "2.5";
     } else if (t.how === "none" && !t.needReweigh) {
       if (dec(x.id, y.id)) {
-        out[i].note = `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
+        out[i].note = deciderLine(matches, bracket.classKey, x.id, y.id, athletes) ?? `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
         out[i].rule = "2.6";
       } else {
         out[i].place = out[i - 1].place;
         out[i].decider = x.id;
-        out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+        out[i].note = deciderLine(matches, bracket.classKey, x.id, y.id, athletes) ?? `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
         out[i].rule = "2.6";
       out[i].rule = "2.6";
       }
@@ -874,11 +893,11 @@ export function biathlon(
     else if (t.how === "unbeaten" && !t.needReweigh)
       y.note = `Вес после перевзвешивания равный: ${nx} выше — выходил в финал без поражений ${finals[x.id] ?? 0} раз(а) против ${finals[y.id] ?? 0} (п. 2.5 Правил).`;
     else if (t.how === "none" && !t.needReweigh) {
-      if (dec(x, y)) y.note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
+      if (dec(x, y)) y.note = deciderLine(matches, classKey, x.id, y.id, athletes) ?? `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
       else {
         y.place = x.place;
         y.decider = x.id;
-        y.note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+        y.note = deciderLine(matches, classKey, x.id, y.id, athletes) ?? `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
       }
     }
   }

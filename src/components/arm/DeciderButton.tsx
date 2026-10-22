@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 export default function DeciderButton({ classKey, x, y }: { classKey: string; x: string; y: string }) {
   const { matches, addDecider, amap } = useStore();
   if (hasDecider(matches, classKey, x, y))
-    return <span className="ml-2 text-xs text-primary print:hidden">решающий поединок назначен — ждёт на пульте судьи</span>;
+    return null;
   return (
     <button
       className="pill ml-2 !px-3 !py-1 text-xs print:hidden"
