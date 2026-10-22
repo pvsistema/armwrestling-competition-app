@@ -16,6 +16,7 @@ import {
   tMode,
   tPoints,
   teamStandings,
+  type PlaceRow,
 } from "./arm";
 import type { State } from "./store";
 import { FOLDERS } from "./saveFolder";
@@ -75,6 +76,9 @@ const FAR_COL: Column = { title: "№ паспорта ФАР", width: 11, align
 const farCols = (show: boolean): Column[] => (show ? [FAR_COL] : []);
 const farCell = (show: boolean, a?: Athlete): string[] => (show ? [a?.farId ?? ""] : []);
 
+const handNotes = (rows: PlaceRow[]) =>
+  rows.filter((r) => r.note).map((r) => `${r.place} место — ${r.note}`);
+
 const placeLabel = (rows: { place: number }[], i: number) => String(rows[i].place);
 
 function classTitle(c: WeightClass | undefined) {
@@ -127,7 +131,7 @@ function handSections(s: State, used: Bracket[], classMap: Record<string, Weight
             kg(a?.weight),
           ];
         }),
-        notes: rows.filter((r) => r.note).map((r) => r.note!),
+        notes: handNotes(rows),
       } as Section;
     });
 }
@@ -261,7 +265,7 @@ export function buildProtocol(
               kg(a?.weight),
             ];
           }),
-          notes: rows.filter((r) => r.note).map((r) => r.note!),
+          notes: handNotes(rows),
         });
       });
   }

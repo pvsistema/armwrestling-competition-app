@@ -589,6 +589,8 @@ export interface PlaceRow {
   needReweigh?: boolean;
   /** Полное равенство с этим спортсменом — нужен решающий поединок (п. 2.6). */
   decider?: string;
+  /** Пункт Правил, по которому решено равенство. */
+  rule?: string;
 }
 
 /** Победитель решающего поединка (п. 2.6) между двумя спортсменами в весовой категории. */
@@ -629,26 +631,38 @@ function placesRoundRobin(bracket: Bracket, matches: Match[], athletes: Record<s
     const nx = athletes[x]?.name ?? "";
     const ny = athletes[y]?.name ?? "";
     if (cnt(x) === 2 && h2h(x, y)) {
-      out[i].note = `Побед поровну: ${nx} выше по личной встрече.`;
+      out[i].note = `Побед поровну: ${nx} выше по личной встрече (круговая система).`;
+      out[i].rule = "личная встреча";
       continue;
     }
     const t = breakTie(athletes[x], athletes[y], 0, 0);
-    if (t.how === "weight") continue;
+    if (t.how === "weight") {
+      if (out[i].place <= 6) {
+        out[i].note = `Побед поровну: ${nx} выше — легче по стартовому весу (п. 2.3 Правил).`;
+        out[i].rule = "2.3";
+      }
+      continue;
+    }
     if (t.how === "reweigh") {
-      out[i].note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
+      out[i].note = `Побед и стартовый вес поровну: по перевзвешиванию ${nx} легче и выше, чем ${ny} (п. 2.4 Правил).`;
+      out[i].rule = "2.4";
       continue;
     }
     if (t.needReweigh) {
       out[i - 1].needReweigh = out[i].needReweigh = true;
       out[i].note = `Побед и вес поровну: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
+      out[i].rule = "2.4";
       continue;
     }
     const d = deciderWinner(matches, bracket.classKey, x, y);
-    if (d) out[i].note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
-    else {
+    if (d) {
+      out[i].note = `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
+      out[i].rule = "2.6";
+    } else {
       out[i].place = out[i - 1].place;
       out[i].decider = x;
       out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+      out[i].rule = "2.6";
     }
   }
   return out;
@@ -718,20 +732,34 @@ export function places(
     const t = breakTie(athletes[x.id], athletes[y.id], flOf(x.id), flOf(y.id));
     const nx = athletes[x.id]?.name ?? "";
     const ny = athletes[y.id]?.name ?? "";
-    if (t.how === "weight") continue;
+    if (t.how === "weight") {
+      if (out[i].place <= 6) {
+        out[i].note = `Выбыли в одном туре: ${nx} выше — легче по стартовому весу (п. 2.3 Правил).`;
+        out[i].rule = "2.3";
+      }
+      continue;
+    }
     if (t.needReweigh) {
       out[i - 1].needReweigh = out[i].needReweigh = true;
       out[i].note = `Вес равный: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
+      out[i].rule = "2.4";
     }
-    if (t.how === "reweigh") out[i].note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
-    else if (t.how === "unbeaten" && !t.needReweigh)
-      out[i].note = `Вес после перевзвешивания равный: ${nx} выше, т.к. дольше шёл без поражений.`;
-    else if (t.how === "none" && !t.needReweigh) {
-      if (dec(x.id, y.id)) out[i].note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
-      else {
+    if (t.how === "reweigh") {
+      out[i].note = `Выбыли в одном туре, стартовый вес равный: по перевзвешиванию ${nx} легче и выше, чем ${ny} (п. 2.4 Правил).`;
+      out[i].rule = "2.4";
+    } else if (t.how === "unbeaten" && !t.needReweigh) {
+      out[i].note = `Вес после перевзвешивания равный: ${nx} выше — дольше шёл без поражений (п. 2.5 Правил).`;
+      out[i].rule = "2.5";
+    } else if (t.how === "none" && !t.needReweigh) {
+      if (dec(x.id, y.id)) {
+        out[i].note = `По решающему поединку ${nx} выше, чем ${ny} (п. 2.6 Правил).`;
+        out[i].rule = "2.6";
+      } else {
         out[i].place = out[i - 1].place;
         out[i].decider = x.id;
         out[i].note = `Полное равенство: ${nx} и ${ny}. Назначьте решающий поединок (п. 2.6 Правил).`;
+        out[i].rule = "2.6";
+      out[i].rule = "2.6";
       }
     }
   }

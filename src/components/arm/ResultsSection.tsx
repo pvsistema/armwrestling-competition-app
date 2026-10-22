@@ -253,6 +253,11 @@ export default function ResultsSection() {
                           <tr className="border-b border-line/60 print:border-black/40">
                             <td />
                             <td colSpan={6} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
+                              {r.rule && (
+                                <span className="mr-1.5 inline-flex items-center rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-semibold text-foreground print:border-black print:bg-white print:text-black">
+                                  {/^\d/.test(r.rule) ? `п. ${r.rule}` : r.rule}
+                                </span>
+                              )}
                               {r.note}
                               {r.decider && <DeciderButton classKey={b.classKey} x={r.decider} y={r.id} />}
                             </td>
