@@ -18,6 +18,7 @@ import {
   HAND_ORDER,
 } from "./arm";
 import { archiveTournament, hasContent } from "./archive";
+import { DEMO_ATHLETES, DEMO_TABLES, askUpgrade, useLicense } from "./license";
 import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEFAULT_GROUPS, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
 
 export interface State {
@@ -203,6 +204,9 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<State>(initial);
+  const { demo } = useLicense();
+  const demoRef = useRef(demo);
+  demoRef.current = demo;
 
   const cur = useRef(s);
   cur.current = s;
@@ -246,19 +250,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const amap = useMemo(() => Object.fromEntries(s.athletes.map((a) => [a.id, a])), [s.athletes]);
 
-  const addAthlete = useCallback(
-    (a: Omit<Athlete, "id">) =>
-      setS((p) => ({ ...p, athletes: [...p.athletes, { ...a, id: Math.random().toString(36).slice(2, 10) }] })),
-    [],
-  );
-  const addAthletes = useCallback(
-    (list: Omit<Athlete, "id">[]) =>
-      setS((p) => ({
-        ...p,
-        athletes: [...p.athletes, ...list.map((a) => ({ ...a, id: Math.random().toString(36).slice(2, 10) }))],
-      })),
-    [],
-  );
+  const addAthlete = useCallback((a: Omit<Athlete, "id">) => {
+    if (demoRef.current && cur.current.athletes.length >= DEMO_ATHLETES)
+      return askUpgrade(`В демоверсии можно зарегистрировать не больше ${DEMO_ATHLETES} участников.`);
+    setS((p) => ({ ...p, athletes: [...p.athletes, { ...a, id: Math.random().toString(36).slice(2, 10) }] }));
+  }, []);
+  const addAthletes = useCallback((list: Omit<Athlete, "id">[]) => {
+    let take = list;
+    if (demoRef.current) {
+      const free = Math.max(0, DEMO_ATHLETES - cur.current.athletes.length);
+      if (free < list.length) {
+        take = list.slice(0, free);
+        askUpgrade(`В демоверсии можно зарегистрировать не больше ${DEMO_ATHLETES} участников — добавлено ${take.length} из ${list.length}.`);
+      }
+    }
+    if (!take.length) return;
+    setS((p) => ({
+      ...p,
+      athletes: [...p.athletes, ...take.map((a) => ({ ...a, id: Math.random().toString(36).slice(2, 10) }))],
+    }));
+  }, []);
   const updateAthlete = useCallback(
     (id: string, patch: Partial<Athlete>) =>
       setS((p) => ({ ...p, athletes: p.athletes.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
@@ -269,21 +280,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
   const setGroups = useCallback((groups: AgeGroup[]) => setS((p) => ({ ...p, groups })), []);
-  const setTournament = useCallback(
-    (t: Partial<Tournament>) => setS((p) => ({ ...p, tournament: { ...p.tournament, ...t } })),
-    [],
-  );
+  const setTournament = useCallback((t: Partial<Tournament>) => {
+    if (demoRef.current && t.tables != null && t.tables > DEMO_TABLES) {
+      askUpgrade(`В демоверсии доступен только ${DEMO_TABLES} стол.`);
+      t = { ...t, tables: DEMO_TABLES };
+    }
+    setS((p) => ({ ...p, tournament: { ...p.tournament, ...t } }));
+  }, []);
+  const lim = (p: State): State =>
+    demoRef.current && p.tournament.tables > DEMO_TABLES ? { ...p, tournament: { ...p.tournament, tables: DEMO_TABLES } } : p;
+  const demoTooBig = () => {
+    if (!demoRef.current || cur.current.athletes.length <= DEMO_ATHLETES) return false;
+    askUpgrade(`В турнире ${cur.current.athletes.length} участников, а демоверсия проводит жеребьёвку не больше чем для ${DEMO_ATHLETES}.`);
+    return true;
+  };
 
   const draw = useCallback((key: string) => {
+    if (demoTooBig()) return;
     setS((p) => {
       const ids = poolsOf(p)[key] ?? [];
       if (!ids.length) return p;
-      const table = tableFor(p, key);
+      const table = tableFor(lim(p), key);
       return settle(drawOne(p, key, ids, table));
     });
   }, []);
 
-  const drawAll = useCallback(() => setS((p) => settle(drawAllInto(p))), []);
+  const drawAll = useCallback(() => {
+    if (demoTooBig()) return;
+    setS((p) => settle(drawAllInto(lim(p))));
+  }, []);
 
   const clearDraw = useCallback((key?: string) => {
     setS((p) =>
@@ -484,6 +509,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Ctx = {
     ...s,
+    tournament: demo && s.tournament.tables > DEMO_TABLES ? { ...s.tournament, tables: DEMO_TABLES } : s.tournament,
     amap,
     addAthlete,
     addAthletes,

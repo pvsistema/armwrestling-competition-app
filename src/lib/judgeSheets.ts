@@ -2,6 +2,7 @@ import { Hand, handsInOrder, Athlete, Bracket, GROUP_LABEL, HOW_LABEL, HAND_LABE
 import type { Styles } from "jspdf-autotable";
 import { fmtDateRange } from "./protocolModel";
 import { FOLDERS, saveFile } from "./saveFolder";
+import { pdfDemoMark } from "./license";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -202,5 +203,6 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
     pdf.text(`стр. ${p} из ${pages}`, W - M, H - 6, { align: "right" });
   }
 
+  pdfDemoMark(pdf);
   return saveFile(pdf.output("blob"), `${fileBase}.pdf`, FOLDERS.sheets);
 }

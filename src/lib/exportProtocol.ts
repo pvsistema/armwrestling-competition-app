@@ -4,6 +4,7 @@ const BASE = import.meta.env.BASE_URL;
 
 import { Saved, saveFile } from "./saveFolder";
 import { flagData } from "./flags";
+import { DEMO_MARK, isDemo, pdfDemoMark } from "./license";
 
 type FlagImg = { data: Uint8Array; dataUrl: string };
 /** Флаги для разделов с колонкой субъекта РФ: ключ — «номер раздела:номер строки». */
@@ -218,6 +219,7 @@ export async function exportPdf(doc: ProtocolDoc, withLogo: boolean, opts: { pri
     pdf.text(`Лист ${p} из ${total}`, W - M, H - 4.5, { align: "right" });
     pdf.setTextColor(0);
   }
+  pdfDemoMark(pdf);
   if (opts.print) {
     pdf.autoPrint();
     const url = URL.createObjectURL(pdf.output("blob"));
@@ -283,6 +285,7 @@ export async function exportWord(doc: ProtocolDoc, withLogo: boolean): Promise<S
       }),
       ...(doc.subtitle ? [para(doc.subtitle, { bold: true, size: 14, align: AlignmentType.CENTER })] : []),
       ...(doc.placeDate ? [para(doc.placeDate, { bold: true, size: 14, align: AlignmentType.CENTER })] : []),
+      ...(isDemo() ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${DEMO_MARK} · документ создан в демоверсии программы`, font: FONT, size: 28, bold: true, color: "C81E1E" })] })] : []),
       new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 22 })] }),
     ],
   });
@@ -424,6 +427,7 @@ export async function exportExcel(doc: ProtocolDoc): Promise<Saved> {
       pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } },
       headerFooter: {
         oddFooter: `&L&"Times New Roman"&8${footLine(doc).replace(/&/g, "&&")}&R&"Times New Roman"&8Лист &P из &N`,
+        ...(isDemo() ? { oddHeader: `&C&"Times New Roman,Bold"&14&KC81E1E${DEMO_MARK}` } : {}),
       },
     });
     const ncol = Math.max(3, ...g.sections.map((s) => s.columns.length));

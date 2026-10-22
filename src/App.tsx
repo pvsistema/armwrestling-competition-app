@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Board from "./pages/Board";
 import NotFound from "./pages/NotFound";
 import ObsOverlay from "./pages/ObsOverlay";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 const isBoard = new URLSearchParams(window.location.search).has("board");
@@ -22,6 +23,7 @@ const App = () => isObs ? <ObsOverlay /> : (
         <Routes>
           <Route path="/" element={isBoard ? <Board /> : <Index />} />
           <Route path="/index.html" element={isBoard ? <Board /> : <Index />} />
+          <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

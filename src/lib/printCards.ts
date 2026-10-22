@@ -3,6 +3,7 @@ import { DISTRICT_FULL } from "./arm";
 import { flagData } from "./flags";
 import { PCard, cardValid, fmtDate } from "./participantCards";
 import { saveFile } from "./saveFolder";
+import { pdfDemoMark } from "./license";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -213,6 +214,7 @@ export async function printCards(cards: PCard[], opts: { save?: boolean; title?:
     });
   }
 
+  pdfDemoMark(pdf);
   const name = cards.length === 1 ? `Карточка_${cards[0].id}_${cards[0].name.split(" ")[0]}.pdf` : `Карточки_участников_${cards.length}.pdf`;
   if (opts.save) return saveFile(pdf.output("blob"), name, "Карточки участников");
   pdf.autoPrint();

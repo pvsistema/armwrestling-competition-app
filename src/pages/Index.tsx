@@ -22,6 +22,8 @@ import PrintFooter from "@/components/arm/PrintFooter";
 import HandDoneDialog from "@/components/arm/HandDoneDialog";
 import ImportAthletes from "@/components/arm/ImportAthletes";
 import StallAlert from "@/components/arm/StallAlert";
+import LicenseButton from "@/components/arm/LicenseButton";
+import DemoMark from "@/components/arm/DemoMark";
 import Icon from "@/components/ui/icon";
 import { StoreProvider, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -55,6 +57,7 @@ function Shell() {
         </div>
       )}
       <AutoBackupBadge />
+      <LicenseButton />
       <HelpSheet />
       <button className="pill" onClick={() => setSection("results")}>
         <Icon name="Printer" size={16} /> Печать
@@ -64,6 +67,7 @@ function Shell() {
 
   return (
     <div className="min-h-screen px-1 pb-0.5 pt-1 sm:px-1.5 print:bg-white print:p-0">
+      <DemoMark />
       <div className="flex min-h-[calc(100vh-24px)] flex-col gap-3 overflow-hidden rounded-[14px] border border-line bg-background px-2 pb-3 pt-0 text-foreground shadow-sm sm:px-4 print:min-h-0 print:overflow-visible print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none">
         <div className="navy-band -mx-2 border-b-2 border-gold/70 px-3 pb-2 text-white sm:-mx-4 sm:px-5 print:hidden">
           <div className="tricolor -mx-3 mb-2 sm:-mx-5" />

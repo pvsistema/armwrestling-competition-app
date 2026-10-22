@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { StoreProvider } from "@/lib/store";
 import { toggleFullscreen, useBoardFocus } from "@/lib/boardSync";
 import BoardView from "@/components/arm/BoardView";
+import DemoMark from "@/components/arm/DemoMark";
 import FightBoard from "@/components/arm/fights/FightBoard";
 import { useFights } from "@/lib/fights";
 import { StreamWall } from "@/components/arm/stream/StreamSection";
@@ -40,6 +41,7 @@ function FightsScreen() {
   }, []);
   return (
     <div className="flex h-screen flex-col bg-navy p-2" onDoubleClick={() => toggleFullscreen()}>
+      <DemoMark />
       <FightBoard night={night} big sound />
     </div>
   );
@@ -62,7 +64,12 @@ function BoardScreen() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setFocus]);
-  return <BoardView focus={focus} onFocus={setFocus} fullscreen={() => toggleFullscreen()} standalone />;
+  return (
+    <>
+      <DemoMark />
+      <BoardView focus={focus} onFocus={setFocus} fullscreen={() => toggleFullscreen()} standalone />
+    </>
+  );
 }
 
 export default function Board() {
