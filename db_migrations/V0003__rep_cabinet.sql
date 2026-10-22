@@ -1,0 +1,50 @@
+CREATE TABLE IF NOT EXISTS reps (
+  id SERIAL PRIMARY KEY,
+  login VARCHAR(60) UNIQUE NOT NULL,
+  pass_hash VARCHAR(200) NOT NULL,
+  name VARCHAR(200) NOT NULL DEFAULT '',
+  team VARCHAR(200) NOT NULL DEFAULT '',
+  phone VARCHAR(100) NOT NULL DEFAULT '',
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  last_login TIMESTAMP NULL
+);
+
+CREATE TABLE IF NOT EXISTS rep_sessions (
+  token VARCHAR(64) PRIMARY KEY,
+  rep_id INTEGER NOT NULL REFERENCES reps(id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS rep_athletes (
+  id SERIAL PRIMARY KEY,
+  rep_id INTEGER NOT NULL REFERENCES reps(id),
+  data TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS intakes (
+  id SERIAL PRIMARY KEY,
+  license_id INTEGER NULL,
+  t_uid VARCHAR(80) NOT NULL,
+  data TEXT NOT NULL,
+  open BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (license_id, t_uid)
+);
+
+CREATE TABLE IF NOT EXISTS entries (
+  id SERIAL PRIMARY KEY,
+  intake_id INTEGER NOT NULL REFERENCES intakes(id),
+  rep_id INTEGER NOT NULL REFERENCES reps(id),
+  items TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  submitted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  imported_version INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (intake_id, rep_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rep_athletes_rep ON rep_athletes(rep_id);
+CREATE INDEX IF NOT EXISTS idx_rep_sessions_rep ON rep_sessions(rep_id);

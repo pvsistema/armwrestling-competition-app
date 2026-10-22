@@ -21,6 +21,7 @@ import RestoreBackup from "@/components/arm/RestoreBackup";
 import PrintFooter from "@/components/arm/PrintFooter";
 import HandDoneDialog from "@/components/arm/HandDoneDialog";
 import ImportAthletes from "@/components/arm/ImportAthletes";
+import IntakePanel from "@/components/cabinet/IntakePanel";
 import StallAlert from "@/components/arm/StallAlert";
 import LicenseButton from "@/components/arm/LicenseButton";
 import DemoMark from "@/components/arm/DemoMark";
@@ -98,6 +99,7 @@ function Shell() {
           {section === "stream" && <StreamSection />}
           {section === "athletes" && !locked && (
             <div className="flex flex-wrap gap-2">
+              <IntakePanel />
               <ImportAthletes />
               <TournamentFileButtons />
               <ClearTournament label="Новый турнир (очистить всё)" onDone={() => setSection("classes")} />

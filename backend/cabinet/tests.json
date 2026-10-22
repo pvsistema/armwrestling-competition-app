@@ -1,0 +1,7 @@
+{"tests": [
+  {"name": "Сервис отвечает", "method": "GET", "path": "/", "expectedStatus": 200, "expectedBody": {"service": "cabinet"}, "bodyMatcher": "partial"},
+  {"name": "Неверный логин", "method": "POST", "path": "/", "body": {"action": "login", "login": "nobody-test", "password": "wrongpass"}, "expectedStatus": 401},
+  {"name": "Кабинет без входа", "method": "POST", "path": "/", "body": {"action": "athletes"}, "expectedStatus": 401},
+  {"name": "Админ без пароля", "method": "POST", "path": "/", "body": {"action": "reps_list"}, "expectedStatus": 401},
+  {"name": "Секретарь без ключа", "method": "POST", "path": "/", "body": {"action": "intake_get", "key": "AAAA", "device": "x", "t_uid": "t"}, "expectedStatus": 403}
+]}

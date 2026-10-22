@@ -9,6 +9,7 @@ import Board from "./pages/Board";
 import NotFound from "./pages/NotFound";
 import ObsOverlay from "./pages/ObsOverlay";
 import Admin from "./pages/Admin";
+import Cabinet from "./pages/Cabinet";
 
 const queryClient = new QueryClient();
 const isBoard = new URLSearchParams(window.location.search).has("board");
@@ -24,6 +25,7 @@ const App = () => isObs ? <ObsOverlay /> : (
           <Route path="/" element={isBoard ? <Board /> : <Index />} />
           <Route path="/index.html" element={isBoard ? <Board /> : <Index />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/cabinet" element={<Cabinet />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
