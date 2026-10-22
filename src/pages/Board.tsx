@@ -68,7 +68,12 @@ function BoardScreen() {
 export default function Board() {
   const mode = new URLSearchParams(window.location.search).get("board");
   if (mode === "fights") return <FightsScreen />;
-  if (mode === "stream") return <StreamScreen />;
+  if (mode === "stream")
+    return (
+      <StoreProvider>
+        <StreamScreen />
+      </StoreProvider>
+    );
   return (
     <StoreProvider>
       <BoardScreen />

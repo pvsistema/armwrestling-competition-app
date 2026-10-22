@@ -4,6 +4,8 @@ import { KIND_LABEL, Layout, Stream, parseStream, sid, useStreams } from "@/lib/
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import StreamPlayer from "./StreamPlayer";
+import LiveOverlay from "./LiveOverlay";
+import { useStore } from "@/lib/store";
 
 const LAYOUTS: { v: Layout; icon: string; label: string }[] = [
   { v: 1, icon: "Square", label: "1 камера" },
@@ -21,7 +23,7 @@ const GRID: Record<Layout, string> = {
 
 /** Сетка камер: главная крупно + остальные; или ровная сетка. */
 export function StreamWall({ big = false }: { big?: boolean }) {
-  const { list, layout, main, setMain } = useStreams();
+  const { list, layout, main, setMain, overlay } = useStreams();
   const visible = list.slice(0, layout);
   const hero = main ? list.find((s) => s.id === main) : null;
 
@@ -36,7 +38,9 @@ export function StreamWall({ big = false }: { big?: boolean }) {
   if (hero)
     return (
       <div className={cn("grid flex-1 gap-2", big ? "h-full grid-cols-[1fr_22%]" : "lg:grid-cols-[1fr_240px]")}>
-        <Tile s={hero} big={big} onClick={() => setMain(null)} hero />
+        <Tile s={hero} big={big} onClick={() => setMain(null)} hero>
+          <LiveOverlay o={overlay} />
+        </Tile>
         <div className={cn("flex gap-2", big ? "flex-col" : "flex-row overflow-x-auto lg:flex-col")}>
           {list
             .filter((s) => s.id !== hero.id)
@@ -50,17 +54,20 @@ export function StreamWall({ big = false }: { big?: boolean }) {
 
   return (
     <div className={cn("grid flex-1 gap-2", GRID[layout], big && "h-full auto-rows-fr")}>
-      {visible.map((s) => (
-        <Tile key={s.id} s={s} big={big} onClick={() => list.length > 1 && setMain(s.id)} />
+      {visible.map((s, i) => (
+        <Tile key={s.id} s={s} big={big} onClick={() => list.length > 1 && setMain(s.id)}>
+          {i === 0 && <LiveOverlay o={overlay} />}
+        </Tile>
       ))}
     </div>
   );
 }
 
-function Tile({ s, big, small, hero, onClick }: { s: Stream; big: boolean; small?: boolean; hero?: boolean; onClick: () => void }) {
+function Tile({ s, big, small, hero, onClick, children }: { s: Stream; big: boolean; small?: boolean; hero?: boolean; onClick: () => void; children?: React.ReactNode }) {
   return (
     <div className={cn("group relative overflow-hidden rounded-[10px] border-2 border-navy bg-black", small ? "aspect-video w-56 shrink-0 lg:w-auto" : !big && "aspect-video", hero && "border-gold")}>
       <StreamPlayer s={s} className="absolute inset-0" muted={small ? true : undefined} />
+      {children}
       <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
         <span className="h-2 w-2 animate-pulse rounded-full bg-corner-red" />
         {s.title}
@@ -78,7 +85,8 @@ function Tile({ s, big, small, hero, onClick }: { s: Stream; big: boolean; small
 
 /** Раздел «Трансляция»: ссылки на онлайн-трансляции и IP-камеры с разных ракурсов. */
 export default function StreamSection() {
-  const { list, save, layout, setLayout, main, setMain } = useStreams();
+  const { list, save, layout, setLayout, main, setMain, overlay, setOverlay } = useStreams();
+  const { tournament } = useStore();
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
@@ -257,6 +265,74 @@ export default function StreamSection() {
           <button className="btn-blue ml-auto !py-2" onClick={open} disabled={!list.length}>
             <Icon name="ExternalLink" size={16} /> Показ в отдельном окне
           </button>
+        </div>
+        <div className="win flex-row flex-wrap items-center gap-2 px-3 py-2">
+          <Icon name="Captions" size={17} className="text-primary" />
+          <span className="text-sm font-medium">Плашка со счётом:</span>
+          {(
+            [
+              ["off", "Выкл."],
+              ["auto", "Авто"],
+              ["tournament", "Турнир"],
+              ["fights", "Армфайты"],
+            ] as const
+          ).map(([k, l]) => (
+            <button
+              key={k}
+              className={cn("pill !px-3 !py-1 text-sm", overlay.mode === k && "pill-on")}
+              onClick={() => setOverlay({ mode: k })}
+              title={
+                k === "auto"
+                  ? "Идёт армфайт — показывает его счёт, иначе текущую схватку турнира"
+                  : k === "tournament"
+                    ? "Текущая схватка и победитель из пульта судьи турнира"
+                    : k === "fights"
+                      ? "Бой, выбранный в разделе «Армфайты»: счёт по раундам, фолы, таймер"
+                      : "Без плашки"
+              }
+            >
+              {l}
+            </button>
+          ))}
+          {overlay.mode !== "off" && (
+            <>
+              {overlay.mode !== "fights" && tournament.tables > 1 && (
+                <select className="h-8 rounded-full border border-line bg-surface px-3 text-sm" value={overlay.table} onChange={(e) => setOverlay({ table: +e.target.value })} title="Схватки какого стола показывать">
+                  {Array.from({ length: tournament.tables }, (_, i) => (
+                    <option key={i} value={i + 1}>
+                      Стол {i + 1}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className="flex rounded-full border border-line bg-surface p-0.5">
+                {(
+                  [
+                    ["top", "ArrowUpToLine", "Сверху"],
+                    ["bottom", "ArrowDownToLine", "Снизу"],
+                  ] as const
+                ).map(([k, ic, t]) => (
+                  <button key={k} title={t} onClick={() => setOverlay({ pos: k })} className={cn("rounded-full px-2.5 py-1", overlay.pos === k ? "bg-primary text-primary-foreground" : "text-panel-muted")}>
+                    <Icon name={ic} size={14} />
+                  </button>
+                ))}
+              </div>
+              <div className="flex rounded-full border border-line bg-surface p-0.5 text-xs font-semibold">
+                {(
+                  [
+                    ["s", "S"],
+                    ["m", "M"],
+                    ["l", "L"],
+                  ] as const
+                ).map(([k, l]) => (
+                  <button key={k} title="Размер плашки" onClick={() => setOverlay({ size: k })} className={cn("rounded-full px-2.5 py-1", overlay.size === k ? "bg-primary text-primary-foreground" : "text-panel-muted")}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <span className="hidden text-xs text-panel-muted 2xl:inline">показывается на главной (или первой) камере</span>
+            </>
+          )}
         </div>
         <StreamWall />
       </div>

@@ -51,6 +51,23 @@ export function parseStream(raw: string, muted = true): { kind: StreamKind; src:
 const KEY = "armsport-streams";
 const LKEY = "armsport-streams-layout";
 const SKEY = "armsport-streams-main";
+const OKEY = "armsport-streams-overlay";
+
+/** Плашка поверх видео: что показывать. auto — идущий армфайт, иначе текущая схватка турнира. */
+export interface Overlay {
+  mode: "off" | "auto" | "tournament" | "fights";
+  table: number;
+  pos: "bottom" | "top";
+  size: "s" | "m" | "l";
+}
+export const DEFAULT_OVERLAY: Overlay = { mode: "auto", table: 1, pos: "bottom", size: "m" };
+function readOverlay(): Overlay {
+  try {
+    return { ...DEFAULT_OVERLAY, ...JSON.parse(localStorage.getItem(OKEY) || "{}") };
+  } catch {
+    return DEFAULT_OVERLAY;
+  }
+}
 export type Layout = 1 | 2 | 4 | 6;
 
 function read(): Stream[] {
@@ -65,7 +82,7 @@ const subs = new Set<() => void>();
 const ping = () => subs.forEach((f) => f());
 if (typeof window !== "undefined")
   window.addEventListener("storage", (e) => {
-    if (e.key === KEY || e.key === LKEY || e.key === SKEY) ping();
+    if (e.key === KEY || e.key === LKEY || e.key === SKEY || e.key === OKEY) ping();
   });
 
 /** Камеры и трансляции — общие для главного окна и окна показа. */
@@ -92,7 +109,12 @@ export function useStreams() {
     else localStorage.removeItem(SKEY);
     ping();
   }, []);
-  return { list, save, layout, setLayout, main, setMain };
+  const overlay = readOverlay();
+  const setOverlay = useCallback((o: Partial<Overlay>) => {
+    localStorage.setItem(OKEY, JSON.stringify({ ...readOverlay(), ...o }));
+    ping();
+  }, []);
+  return { list, save, layout, setLayout, main, setMain, overlay, setOverlay };
 }
 
 export const sid = () => Math.random().toString(36).slice(2, 10);
