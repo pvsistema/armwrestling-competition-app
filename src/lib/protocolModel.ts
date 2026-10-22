@@ -207,7 +207,7 @@ export function buildProtocol(
         rows: rows.map((r, i) => {
           const a = amap[r.id];
           return [
-            placeLabel(rows, i),
+            r.rule ? `${r.place}*\n(п. ${r.rule})` : placeLabel(rows, i),
             a?.name ?? "",
             ...farCell(showFar, a),
             `${sex(a)}\n${a ? fmtBirth(a) : ""}`,
@@ -222,7 +222,7 @@ export function buildProtocol(
             kg(a?.weight),
           ];
         }),
-        notes: rows.filter((r) => r.note).map((r) => r.note!),
+        notes: rows.filter((r) => r.note).map((r) => (r.rule ? `* ${r.note}` : r.note!)),
       });
     });
   } else if (part === "full" || part === "biathlon") {

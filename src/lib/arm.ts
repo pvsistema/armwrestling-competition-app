@@ -749,6 +749,8 @@ export interface BiathlonRow {
   note?: string;
   needReweigh?: boolean;
   decider?: string;
+  /** Пункт Правил, по которому место присуждено (2.7, 2.8, 2.9). */
+  rule?: string;
 }
 
 /** Двоеборье (ФАР): сумма очков за места на правой и левой руке. */
@@ -835,7 +837,10 @@ export function biathlon(
   if (awarded.size) {
     for (const r of rows) {
       const w = awarded.get(r.id);
-      if (w) r.place = w.place;
+      if (w) {
+        r.place = w.place;
+        r.rule = w.rule;
+      }
     }
     const idx = new Map(rows.map((r, i) => [r.id, i]));
     rows.sort((x, y) => x.place - y.place || idx.get(x.id)! - idx.get(y.id)!);

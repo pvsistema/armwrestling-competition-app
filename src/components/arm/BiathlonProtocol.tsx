@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from "react";
+import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { biathlon, fmtBirth, fmtKg2, tPoints } from "@/lib/arm";
 import { cn } from "@/lib/utils";
@@ -71,8 +72,22 @@ export default function BiathlonProtocol({ onlyDone }: { onlyDone: boolean }) {
                   const a = amap[r.id];
                   return (
                     <Fragment key={r.id}>
-                      <tr className="border-b border-line/60 last:border-0 print:border-black/40">
-                        <td className="px-3 py-2 font-mono font-semibold">{r.place}</td>
+                      <tr className={cn("border-b border-line/60 last:border-0 print:border-black/40", r.rule && "bg-gold/15 print:bg-white")}>
+                        <td className="px-3 py-2 font-mono font-semibold">
+                          {r.rule ? (
+                            <span
+                              className="inline-flex flex-col items-start leading-tight"
+                              title={`Место присуждено по п. ${r.rule} Правил`}
+                            >
+                              <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gold px-1.5 text-navy ring-2 ring-gold/40 print:bg-white print:text-black print:ring-0">
+                                {r.place}*
+                              </span>
+                              <span className="mt-0.5 whitespace-nowrap font-sans text-[10px] font-medium text-primary print:text-black">п. {r.rule}</span>
+                            </span>
+                          ) : (
+                            r.place
+                          )}
+                        </td>
                         <td className="px-2 py-2 font-medium">{a?.name}</td>
                         <td className="px-2 py-2 text-panel-muted print:text-black">
                           {a?.gender === "F" ? "жен." : "муж."}
@@ -93,9 +108,14 @@ export default function BiathlonProtocol({ onlyDone }: { onlyDone: boolean }) {
                         </td>
                       </tr>
                       {r.note && (
-                        <tr className="border-b border-line/60 print:border-black/40">
+                        <tr className={cn("border-b border-line/60 print:border-black/40", r.rule && "bg-gold/15 print:bg-white")}>
                           <td />
-                          <td colSpan={11} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : "text-panel-muted print:text-black")}>
+                          <td colSpan={11} className={cn("px-2 pb-2 text-xs", r.needReweigh ? "text-destructive print:text-black" : r.rule ? "text-foreground print:text-black" : "text-panel-muted print:text-black")}>
+                            {r.rule && (
+                              <span className="mr-1.5 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground print:border print:border-black print:bg-white print:text-black">
+                                <Icon name="Scale" size={11} /> * п. {r.rule} Правил
+                              </span>
+                            )}
                             {r.note}
                             {r.decider && <DeciderButton classKey={c.key} x={r.decider} y={r.id} />}
                           </td>
