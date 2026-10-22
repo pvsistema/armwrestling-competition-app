@@ -27,7 +27,11 @@ export interface BarData {
   timer?: { until: number; label: string } | null;
 }
 
-const abs = (u: string | null) => (u && u.startsWith("/") ? `${location.origin}${u}` : u);
+/** Основной адрес сайта: плашка для OBS и флаги всегда идут с него, даже если программа открыта в превью или в настольной версии. */
+export const PUBLIC_SITE = "https://рукоборец.рф";
+const PUBLIC_ORIGIN = "https://xn--90ainqbiet7a.xn--p1ai";
+const siteOrigin = () => PUBLIC_ORIGIN;
+const abs = (u: string | null) => (u && u.startsWith("/") ? `${siteOrigin()}${u}` : u);
 const flagOf = (region?: string) => abs(flagUrl(region) ?? (region ? countryFlag(region) : null));
 
 function fightBar(f: Fight, n: FightNight): BarData {
@@ -126,7 +130,8 @@ export const newObsKey = () => {
   localStorage.removeItem(KKEY);
   return obsKey();
 };
-export const obsUrl = (key: string, o: Pick<Overlay, "pos" | "size">) => `${location.origin}${import.meta.env.BASE_URL}?overlay=${key}&pos=${o.pos}&size=${o.size}`;
+export const obsUrl = (key: string, o: Pick<Overlay, "pos" | "size">) =>
+  `${PUBLIC_SITE}/?overlay=${key}&pos=${o.pos}&size=${o.size}`;
 
 const PKEY = "armsport-obs-on";
 export const obsOn = () => localStorage.getItem(PKEY) === "1";
