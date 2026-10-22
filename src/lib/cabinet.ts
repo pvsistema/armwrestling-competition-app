@@ -1,5 +1,6 @@
 import func2url from "../../backend/func2url.json";
-import { AgeGroup, Athlete, Gender, Hand, ParaClass, WeightClass, groupOf, tournamentYear, weightClasses, adultGroupFor } from "./arm";
+import { AgeGroup, Athlete, Gender, Hand, ParaClass, RANKS, WeightClass, groupOf, tournamentYear, weightClasses, adultGroupFor } from "./arm";
+import { FarBase, fmtFarBirth, matchFar, normName } from "./farPassports";
 
 export const CABINET_URL = (func2url as Record<string, string>).cabinet;
 const TKEY = "armsport-rep-token";
@@ -117,3 +118,32 @@ export function toProgram(it: EntryItem, team: string): Omit<Athlete, "id"> {
 }
 
 export const fmtD = (d?: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "");
+
+export interface FarDiff {
+  a: RepAthlete;
+  next: RepAthlete;
+  changes: string[];
+  by: "id" | "name";
+}
+
+/** Сверка спортсмена с базой паспортов ФАР: что будет дополнено или исправлено. */
+export function farDiff(a: RepAthlete, base: FarBase): FarDiff | "missing" | null {
+  const p = a.farId?.trim() ? base.byId.get(a.farId.trim()) : matchFar(base, a.name, a.birthDate ? +a.birthDate.slice(0, 4) : undefined);
+  if (!p) return a.farId?.trim() ? "missing" : null;
+  const next: RepAthlete = { ...a };
+  const changes: string[] = [];
+  const set = <K extends keyof RepAthlete>(k: K, v: RepAthlete[K], label: string) => {
+    if (v && v !== a[k]) {
+      next[k] = v;
+      changes.push(label);
+    }
+  };
+  set("farId", p.id, `паспорт № ${p.id}`);
+  if (normName(p.name) !== normName(a.name)) set("name", p.name, `ФИО: ${p.name}`);
+  set("birthDate", p.birthDate, `дата рождения ${fmtFarBirth(p.birthDate)}`);
+  if (p.gender) set("gender", p.gender, p.gender === "M" ? "пол: муж." : "пол: жен.");
+  if (p.rank && RANKS.includes(p.rank)) set("rank", p.rank, `звание: ${p.rank}`);
+  if (!a.club?.trim()) set("club", p.region, `субъект: ${p.region}`);
+  set("district", p.district, `округ: ${p.district}`);
+  return { a, next, changes, by: a.farId?.trim() ? "id" : "name" };
+}

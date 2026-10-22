@@ -27,7 +27,7 @@ function toRep(d: Draft, team: string): RepAthlete {
 
 export default function RepImport({ list, team, reload }: { list: RepAthlete[]; team: string; reload: () => void }) {
   const input = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<{ a: RepAthlete; errors: string[]; dup: boolean; line: number }[] | null>(null);
+  const [rows, setRows] = useState<{ a: RepAthlete; errors: string[]; dup: boolean; line: number; far?: Draft["_far"]; filled: string[] }[] | null>(null);
   const [skip, setSkip] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -39,6 +39,7 @@ export default function RepImport({ list, team, reload }: { list: RepAthlete[]; 
     setBusy(true);
     try {
       const res = await readAthletesFile(file, []);
+      if ("farUnavailable" in res && res.farUnavailable) toast({ title: "База ФАР недоступна", description: "Список загружен без сверки с паспортами ФАР." });
       if ("error" in res && res.error) {
         toast({ title: "Не удалось прочитать файл", description: res.error, variant: "destructive" });
         return;
@@ -51,7 +52,7 @@ export default function RepImport({ list, team, reload }: { list: RepAthlete[]; 
         const k = key(a.name, a.birthDate);
         const dup = have.has(k);
         have.add(k);
-        return { a, errors, dup, line: d._row };
+        return { a, errors, dup, line: d._row, far: d._far, filled: d._filled ?? [] };
       });
       setFileName(file.name);
       setRows(out);
@@ -143,7 +144,16 @@ export default function RepImport({ list, team, reload }: { list: RepAthlete[]; 
                     <td className="px-2 py-2 font-mono">{fmtD(r.a.birthDate) || "—"}</td>
                     <td className="px-2 py-2">{r.a.rank}</td>
                     <td className="px-2 py-2">{[r.a.club, r.a.city].filter(Boolean).join(", ")}</td>
-                    <td className="px-2 py-2 font-mono text-xs">{r.a.farId}</td>
+                    <td className="px-2 py-2 font-mono text-xs">
+                      {r.a.farId && (
+                        <span className={cn("inline-flex items-center gap-1", r.far === "missing" ? "text-corner-red" : r.far ? "text-primary" : "")}>
+                          <Icon name={r.far === "missing" ? "BadgeAlert" : "BadgeCheck"} size={13} />
+                          {r.a.farId}
+                        </span>
+                      )}
+                      {r.far === "by-name" && <div className="font-sans text-[11px] text-panel-muted">найден по ФИО</div>}
+                      {r.filled.length > 0 && <div className="font-sans text-[11px] text-panel-muted">из базы: {r.filled.join(", ")}</div>}
+                    </td>
                     <td className="px-2 py-2">{r.a.coach}</td>
                     <td className="px-2 py-2 text-xs">
                       {r.a.insNum || r.a.insTo ? (

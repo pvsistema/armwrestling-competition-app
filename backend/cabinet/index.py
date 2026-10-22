@@ -169,20 +169,25 @@ def rep_action(cur, rep: dict, action: str, b: dict, token: str) -> dict:
         items = b.get("athletes") or []
         if not isinstance(items, list) or not items:
             return err(400, "Список пуст")
+        new = sum(1 for a in items if isinstance(a, dict) and not a.get("id"))
         cur.execute("SELECT COUNT(*) FROM rep_athletes WHERE rep_id = %s", (rid,))
-        if cur.fetchone()[0] + len(items) > MAX_ATHLETES:
+        if cur.fetchone()[0] + new > MAX_ATHLETES:
             return err(400, f"Не больше {MAX_ATHLETES} спортсменов")
-        added = 0
+        added = updated = 0
         for a in items:
             if not isinstance(a, dict) or not clip(a.get("name"), 200):
                 continue
-            a.pop("id", None)
+            aid = int(a.pop("id", 0) or 0)
             data = json.dumps(a, ensure_ascii=False)
             if len(data) > 5000:
                 continue
-            cur.execute("INSERT INTO rep_athletes (rep_id, data) VALUES (%s, %s)", (rid, data))
-            added += 1
-        return resp(200, {"ok": True, "added": added})
+            if aid:
+                cur.execute("UPDATE rep_athletes SET data = %s, updated_at = NOW() WHERE id = %s AND rep_id = %s", (data, aid, rid))
+                updated += cur.rowcount
+            else:
+                cur.execute("INSERT INTO rep_athletes (rep_id, data) VALUES (%s, %s)", (rid, data))
+                added += 1
+        return resp(200, {"ok": True, "added": added, "updated": updated})
     if action == "athlete_delete":
         cur.execute("DELETE FROM rep_athletes WHERE id = %s AND rep_id = %s", (int(b.get("id") or 0), rid))
         return resp(200, {"ok": True})

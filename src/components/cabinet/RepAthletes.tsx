@@ -5,6 +5,9 @@ import { RepAthlete, cab, fmtD } from "@/lib/cabinet";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import RepImport from "./RepImport";
+import RepFarSync from "./RepFarSync";
+import FarNameInput from "@/components/arm/FarNameInput";
+import { FarPassport } from "@/lib/farPassports";
 
 const EMPTY: RepAthlete = { name: "", gender: "M", birthDate: "", rank: "", club: "", city: "", district: "", farId: "", coach: "", insNum: "", insTo: "" };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,6 +25,17 @@ function AthleteForm({ init, team, onDone }: { init: RepAthlete; team: string; o
   const [f, setF] = useState<RepAthlete>({ ...EMPTY, ...init, club: init.club || team });
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<RepAthlete>) => setF((x) => ({ ...x, ...p }));
+  const pickFar = (p: FarPassport) =>
+    setF((x) => ({
+      ...x,
+      name: p.name,
+      farId: p.id,
+      gender: p.gender || x.gender,
+      birthDate: p.birthDate || x.birthDate,
+      rank: p.rank && RANKS.includes(p.rank) ? p.rank : x.rank,
+      club: x.club || p.region,
+      district: p.district || x.district,
+    }));
   const save = async () => {
     if (!f.name.trim() || !f.birthDate) return toast({ title: "Укажите ФИО и дату рождения", variant: "destructive" });
     setBusy(true);
@@ -39,7 +53,7 @@ function AthleteForm({ init, team, onDone }: { init: RepAthlete; team: string; o
       <div className="text-lg font-semibold">{init.id ? "Изменить спортсмена" : "Новый спортсмен"}</div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <L label="Фамилия Имя Отчество" className="sm:col-span-2">
-          <input className="field" value={f.name} onChange={(e) => set({ name: e.target.value })} autoFocus />
+          <FarNameInput value={f.name} farId={f.farId} onChange={(v) => set({ name: v })} onPick={pickFar} onClearFar={() => set({ farId: "" })} />
         </L>
         <L label="Пол">
           <div className="flex gap-1.5">
@@ -138,6 +152,7 @@ export default function RepAthletes({ list, team, reload }: { list: RepAthlete[]
             <Icon name="UserPlus" size={18} /> Добавить спортсмена
           </button>
           <RepImport list={list} team={team} reload={reload} />
+          <RepFarSync list={list} reload={reload} />
           <input className="field ml-auto w-full max-w-xs" placeholder="Поиск по ФИО" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       )}
@@ -163,6 +178,7 @@ export default function RepAthletes({ list, team, reload }: { list: RepAthlete[]
                   <td className="px-3 py-2 text-panel-muted">{i + 1}</td>
                   <td className="px-3 py-2 font-medium">
                     {a.name} <span className="font-mono text-xs text-panel-muted">{a.gender === "M" ? "М" : "Ж"}</span>
+                    {a.farId && <Icon name="BadgeCheck" size={14} className="ml-1 inline align-[-2px] text-primary" />}
                     {a.para && <span className="ml-1.5 rounded-full bg-copper px-1.5 text-[10px] font-semibold text-white">ПОДА {a.para}</span>}
                   </td>
                   <td className="px-3 py-2 font-mono">{fmtD(a.birthDate)}</td>
