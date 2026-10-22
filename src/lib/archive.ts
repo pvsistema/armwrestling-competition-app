@@ -14,6 +14,8 @@ export interface ArchiveMeta {
   done: number;
   total: number;
   updatedAt: number;
+  /** Спортсмены турнира — для поиска по фамилии. */
+  people?: { name: string; club?: string }[];
 }
 interface Entry extends ArchiveMeta {
   data: State;
@@ -70,7 +72,9 @@ export async function archiveTournament(s: State) {
 
 export async function listArchive(): Promise<ArchiveMeta[]> {
   const all = (await tx("readonly", (st) => st.getAll())) as Entry[];
-  return all.map(({ data: _d, ...m }) => m).sort((a, b) => b.updatedAt - a.updatedAt);
+  return all
+    .map(({ data, ...m }) => ({ ...m, people: (data?.athletes ?? []).map((a) => ({ name: a.name, club: a.club })) }))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function loadArchived(id: string): Promise<State | null> {

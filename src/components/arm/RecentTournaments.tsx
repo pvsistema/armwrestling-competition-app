@@ -42,10 +42,19 @@ export default function RecentTournaments({ onOpened }: { onOpened?: () => void 
   const years = [...new Set(others.map(yearOf))].sort((a, b) => b.localeCompare(a));
   const words = norm(q).split(/\s+/).filter(Boolean);
   const filtering = words.length > 0 || !!year;
+  const hits = new Map<string, string[]>();
   const found = others.filter((m) => {
     if (year && yearOf(m) !== year) return false;
     const hay = norm(`${m.name} ${m.place} ${m.date} ${m.dateEnd ?? ""} ${fmtDateRange(m.date, m.dateEnd)}`);
-    return words.every((w) => hay.includes(w));
+    const rest = words.filter((w) => !hay.includes(w));
+    if (!rest.length) return true;
+    const ppl = (m.people ?? []).filter((p) => {
+      const n = norm(p.name);
+      return rest.every((w) => n.split(/\s+/).some((x) => x.startsWith(w)));
+    });
+    if (!ppl.length) return false;
+    hits.set(m.id, ppl.map((p) => (p.club ? `${p.name} (${p.club})` : p.name)));
+    return true;
   });
   const shown = all || filtering ? found : found.slice(0, 6);
   const searchable = others.length > 3;
@@ -84,7 +93,7 @@ export default function RecentTournaments({ onOpened }: { onOpened?: () => void 
               className="field !pl-10 !pr-9"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Название или город"
+              placeholder="Название, город или фамилия спортсмена"
             />
             {q && (
               <button className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-panel-muted hover:bg-surface" onClick={() => setQ("")} title="Очистить">
@@ -156,6 +165,15 @@ export default function RecentTournaments({ onOpened }: { onOpened?: () => void 
                   <Icon name="X" size={15} />
                 </button>
               </div>
+              {hits.get(m.id) && (
+                <div className="flex items-start gap-1.5 rounded-md bg-gold/15 px-2.5 py-1.5 text-sm">
+                  <Icon name="UserRound" size={14} className="mt-0.5 shrink-0 text-primary" />
+                  <span className="line-clamp-2">
+                    {hits.get(m.id)!.slice(0, 3).join(", ")}
+                    {hits.get(m.id)!.length > 3 && ` и ещё ${hits.get(m.id)!.length - 3}`}
+                  </span>
+                </div>
+              )}
               <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-panel-muted">
                 <span className="inline-flex items-center gap-1">
                   <Icon name="Users" size={13} /> {m.athletes}
