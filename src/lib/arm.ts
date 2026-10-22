@@ -762,9 +762,26 @@ export function biathlon(
   pts: number[],
 ): BiathlonRow[] {
   const map: Record<string, BiathlonRow> = {};
+  const tours: Record<string, Partial<Record<Hand, number>>> = {};
+  const finals: Record<string, number> = {};
   for (const hand of HAND_ORDER) {
     const b = brackets.find((x) => x.classKey === classKey && x.hand === hand);
     if (!b) continue;
+    const own = matches.filter((m) => m.key === b.key && m.group !== "X");
+    const rounds: Record<string, Set<number>> = {};
+    const seen = (id: string, r: number) => (rounds[id] ||= new Set()).add(r);
+    own.forEach((m) => {
+      seen(m.a, m.round);
+      seen(m.b, m.round);
+    });
+    (b.byes ?? []).forEach((y) => seen(y.id, y.round));
+    for (const id of Object.keys(rounds)) (tours[id] ||= {})[hand] = rounds[id].size;
+    const fin = own.find((m) => m.group === "F");
+    if (fin)
+      for (const id of [fin.a, fin.b]) {
+        const lostBefore = own.some((m) => m.winner && m.winner !== id && (m.a === id || m.b === id) && m.round < fin.round && m.group !== "F" && m.group !== "SF");
+        if (!lostBefore) finals[id] = (finals[id] ?? 0) + 1;
+      }
     for (const r of places(b, matches, athletes)) {
       const row = (map[r.id] ||= { id: r.id, place: 0, right: null, left: null, rightPts: 0, leftPts: 0, total: 0 });
       const p = pointsFor(r.place, pts);
@@ -781,8 +798,17 @@ export function biathlon(
   const rows = Object.values(map);
   const best = (r: BiathlonRow) => Math.min(r.right ?? Infinity, r.left ?? Infinity);
   const second = (r: BiathlonRow) => Math.max(r.right ?? Infinity, r.left ?? Infinity);
-  const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total || best(x) - best(y) || second(x) - second(y);
-  const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], 0, 0);
+  const weakHand = (r: BiathlonRow): Hand | null =>
+    r.right == null ? (r.left == null ? null : "left") : r.left == null ? "right" : r.right >= r.left ? "right" : "left";
+  const toursOn = (r: BiathlonRow) => {
+    const h = weakHand(r);
+    return h ? (tours[r.id]?.[h] ?? 0) : 0;
+  };
+  /** п. 2.2: если на «слабой» руке оба ниже 6-го места — выше тот, кто прошёл больше туров этой рукой. */
+  const byTours = (x: BiathlonRow, y: BiathlonRow) => second(x) > 6 && second(y) > 6 && second(x) !== Infinity && second(y) !== Infinity;
+  const cmpSecond = (x: BiathlonRow, y: BiathlonRow) => (byTours(x, y) ? toursOn(y) - toursOn(x) : second(x) - second(y));
+  const cmpBase = (x: BiathlonRow, y: BiathlonRow) => y.total - x.total || best(x) - best(y) || cmpSecond(x, y);
+  const tie = (x: BiathlonRow, y: BiathlonRow) => breakTie(athletes[x.id], athletes[y.id], finals[x.id] ?? 0, finals[y.id] ?? 0);
   const dec = (x: BiathlonRow, y: BiathlonRow) => {
     const d = deciderWinner(matches, classKey, x.id, y.id);
     return d === x.id ? -1 : d === y.id ? 1 : 0;
@@ -801,7 +827,12 @@ export function biathlon(
       y.note = `Сумма очков равная: ${nx} выше по лучшему месту на одной из рук.`;
       continue;
     }
-    if (second(x) !== second(y)) {
+    if (byTours(x, y)) {
+      if (toursOn(x) !== toursOn(y)) {
+        y.note = `Сумма и лучшее место равны, на другой руке оба ниже 6-го места: ${nx} выше — прошёл больше туров (${toursOn(x)} против ${toursOn(y)}, п. 2.2 Правил).`;
+        continue;
+      }
+    } else if (second(x) !== second(y)) {
       y.note = `Сумма и лучшее место равны: ${nx} выше по месту на другой руке.`;
       continue;
     }
@@ -812,6 +843,8 @@ export function biathlon(
       y.note = `Сумма и вес равны: требуется перевзвешивание (п. 2.4 Правил) — ${nx} и ${ny}.`;
     }
     if (t.how === "reweigh") y.note = `По результатам перевзвешивания ${nx} выше, чем ${ny}.`;
+    else if (t.how === "unbeaten" && !t.needReweigh)
+      y.note = `Вес после перевзвешивания равный: ${nx} выше — выходил в финал без поражений ${finals[x.id] ?? 0} раз(а) против ${finals[y.id] ?? 0} (п. 2.5 Правил).`;
     else if (t.how === "none" && !t.needReweigh) {
       if (dec(x, y)) y.note = `По решающему поединку (п. 2.6) ${nx} выше, чем ${ny}.`;
       else {
