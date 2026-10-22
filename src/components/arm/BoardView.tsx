@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import FarFace from "./FarFace";
+import FarFlag from "./FarFlag";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
 import { globalBreak, handStage, pendingQueue, tableBreak, waitingSecond } from "@/lib/queue";
 import HandBreak from "./HandBreak";
@@ -39,6 +40,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
       .filter((m) => m.winner && (t === "all" || m.table === t))
       .sort((a, b) => (b.decidedAt ?? 0) - (a.decidedAt ?? 0));
   const photos = tournament.showFarPhotoBoard ?? true;
+  const flags = tournament.showFlagBoard ?? true;
   const fresh = (m?: DM) => !!m?.decidedAt && now.getTime() - m.decidedAt < 10000;
 
   const winnerBanner = (m: DM, big: boolean) => {
@@ -55,14 +57,23 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         <div className="flex items-center gap-2 font-mono text-sm uppercase text-panel-muted md:text-lg">
           <Icon name="Trophy" size={big ? 28 : 18} className="text-primary" /> Победитель · {blue ? "синий угол" : "красный угол"}
         </div>
-        {photos && (
-          <FarFace
-            farId={amap[m.winner!]?.farId}
-            name={amap[m.winner!]?.name ?? ""}
-            corner={blue ? "blue" : "red"}
-            className={big ? "h-[clamp(140px,22vh,280px)] w-[clamp(118px,18.5vh,236px)]" : "h-[clamp(64px,9vh,110px)] w-[clamp(54px,7.6vh,92px)]"}
-          />
-        )}
+        <div className="flex items-end gap-3">
+          {photos && (
+            <FarFace
+              farId={amap[m.winner!]?.farId}
+              name={amap[m.winner!]?.name ?? ""}
+              corner={blue ? "blue" : "red"}
+              className={big ? "h-[clamp(140px,22vh,280px)] w-[clamp(118px,18.5vh,236px)]" : "h-[clamp(64px,9vh,110px)] w-[clamp(54px,7.6vh,92px)]"}
+            />
+          )}
+          {flags && (
+            <FarFlag
+              farId={amap[m.winner!]?.farId}
+              club={amap[m.winner!]?.club}
+              className={big ? "h-[clamp(60px,9vh,120px)] w-[clamp(90px,13.5vh,180px)]" : "h-[clamp(28px,4vh,48px)] w-[clamp(42px,6vh,72px)]"}
+            />
+          )}
+        </div>
         <div className={cn("font-semibold leading-tight tracking-tight", blue ? "text-corner-blue" : "text-corner-red", big ? "text-[clamp(44px,7vw,128px)]" : "text-[clamp(22px,2.6vw,44px)]")}>
           {amap[m.winner!]?.name}
         </div>
@@ -276,6 +287,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
           {m && penDots(m, id, false)}
         </div>
         <div className={cn("text-panel-muted", size === "sm" ? "line-clamp-2 text-xs md:text-sm" : "truncate text-sm md:text-base")}>
+          {flags && <FarFlag farId={a?.farId} club={a?.club} className="mr-1.5 inline-block h-[1.1em] w-[1.65em] align-[-0.15em]" />}
           {fmtKg(a?.weight)} кг{a?.club ? ` · ${a.club}` : ""}
         </div>
         </div>
@@ -342,6 +354,9 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
                         corner={i === 0 ? "blue" : "red"}
                         className="h-[clamp(120px,24vh,300px)] w-[clamp(100px,20vh,250px)]"
                       />
+                    )}
+                    {flags && (
+                      <FarFlag farId={amap[id]?.farId} club={amap[id]?.club} className="h-[clamp(48px,8vh,100px)] w-[clamp(72px,12vh,150px)]" />
                     )}
                     <div className={cn("font-mono text-sm uppercase md:text-lg", i === 0 ? "text-corner-blue" : "text-corner-red")}>
                       {i === 0 ? "синий угол" : "красный угол"}

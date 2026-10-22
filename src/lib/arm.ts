@@ -140,6 +140,8 @@ export interface Tournament {
   showFarPhoto?: boolean;
   /** Фото из паспорта ФАР на табло для зрителей. */
   showFarPhotoBoard?: boolean;
+  /** Флаг субъекта РФ на табло. */
+  showFlagBoard?: boolean;
   restShort?: number;
   restLong?: number;
   system?: System;
