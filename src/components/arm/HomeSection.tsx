@@ -4,6 +4,7 @@ import { fmtDateRange } from "@/lib/protocolModel";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import ClearTournament from "./ClearTournament";
+import RecentTournaments from "./RecentTournaments";
 import type { Section } from "./AppHeader";
 
 const STEPS: { id: Section; title: string; text: string; icon: string }[] = [
@@ -138,6 +139,8 @@ export default function HomeSection({ onSection }: { onSection: (s: Section) => 
           ))}
         </div>
       </section>
+
+      <RecentTournaments onOpened={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
     </div>
   );
 }

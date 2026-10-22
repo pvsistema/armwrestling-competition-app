@@ -116,6 +116,8 @@ export interface Bracket {
 }
 
 export interface Tournament {
+  /** Внутренний номер турнира — для списка последних турниров. */
+  uid?: string;
   name: string;
   date: string;
   place: string;

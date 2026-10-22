@@ -17,6 +17,7 @@ import {
   weightClasses,
   HAND_ORDER,
 } from "./arm";
+import { archiveTournament, hasContent } from "./archive";
 import { DEFAULT_GROUPS, DEFAULT_TOURNAMENT, LEGACY_DEFAULT_GROUPS, LEGACY_DEMO_NAMES, LEGACY_DEMO_TOURNAMENT } from "./demo";
 
 export interface State {
@@ -202,6 +203,22 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<State>(initial);
+
+  const cur = useRef(s);
+  cur.current = s;
+  useEffect(() => {
+    if (!s.tournament.uid && hasContent(s)) {
+      setS((p) => (p.tournament.uid ? p : { ...p, tournament: { ...p.tournament, uid: uid() + uid() } }));
+      return;
+    }
+    const t = setTimeout(() => archiveTournament(s).catch(() => {}), 2500);
+    return () => clearTimeout(t);
+  }, [s]);
+  useEffect(() => {
+    const flush = () => document.visibilityState === "hidden" && archiveTournament(cur.current).catch(() => {});
+    document.addEventListener("visibilitychange", flush);
+    return () => document.removeEventListener("visibilitychange", flush);
+  }, []);
 
   const firstSave = useRef(true);
   useEffect(() => {
@@ -406,6 +423,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const clearTournament = useCallback((keep: { groups?: boolean; staff?: boolean }) => {
+    archiveTournament(cur.current).catch(() => {});
     ["armsport-timers", "armsport-stall", "armsport-board-focus"].forEach((k) => {
       localStorage.removeItem(k);
       window.dispatchEvent(new StorageEvent("storage", { key: k }));
@@ -456,7 +474,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const exportData = useCallback(() => s, [s]);
-  const importData = useCallback((data: State) => setS(data), []);
+  const importData = useCallback((data: State) => {
+    archiveTournament(cur.current).catch(() => {});
+    setS(data);
+  }, []);
 
   const value: Ctx = {
     ...s,
