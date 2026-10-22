@@ -267,7 +267,7 @@ export function weightClasses(groups: AgeGroup[]): WeightClass[] {
         groupName: g.name,
         limit: l,
         prev: i === 0 ? 0 : limits[i - 1],
-        label: `до ${l} кг`,
+        label: `${l} кг`,
       });
     });
     const last = limits[limits.length - 1] ?? 0;

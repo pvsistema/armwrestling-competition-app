@@ -34,7 +34,7 @@ export default function BiathlonProtocol({ onlyDone }: { onlyDone: boolean }) {
             <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 print:border-black print:bg-white">
               <div className="flex-1">
                 <div className="text-lg font-medium">
-                  {cls?.groupName} · весовая категория {cls?.label.replace("до ", "")}
+                  {cls?.groupName} · весовая категория {cls?.label}
                 </div>
                 <div className="font-mono text-xs text-panel-muted print:text-black">
                   {rows.length} участников · {c.hands === 2 ? "правая + левая" : "только одна рука проведена"}

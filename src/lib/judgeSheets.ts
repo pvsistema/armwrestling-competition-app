@@ -79,7 +79,7 @@ export async function exportJudgeSheets(inp: SheetsInput, list: Bracket[], fileB
   orderBrackets(list, handsInOrder(inp.tournament)).forEach((b, bi) => {
     if (bi > 0) pdf.addPage();
     const c = inp.classMap[b.classKey];
-    const catTitle = `${c?.groupName ?? ""}, ${c?.abs ? "абсолютное первенство" : c?.limit == null ? `${c?.prev ?? ""}+ кг` : `до ${c.limit} кг`}, ${HAND_LABEL[b.hand]} рука`;
+    const catTitle = `${c?.groupName ?? ""}, ${c?.abs ? "абсолютное первенство" : c?.limit == null ? `${c?.prev ?? ""}+ кг` : `${c.limit} кг`}, ${HAND_LABEL[b.hand]} рука`;
     let pageHeader = (sub: string) => {
       if (logo) pdf.addImage(logo, "PNG", M, 8, 15, 15);
       pdf.setFont("NS", "bold");
