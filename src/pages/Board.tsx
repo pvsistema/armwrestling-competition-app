@@ -4,6 +4,26 @@ import { toggleFullscreen, useBoardFocus } from "@/lib/boardSync";
 import BoardView from "@/components/arm/BoardView";
 import FightBoard from "@/components/arm/fights/FightBoard";
 import { useFights } from "@/lib/fights";
+import { StreamWall } from "@/components/arm/stream/StreamSection";
+
+function StreamScreen() {
+  useEffect(() => {
+    document.title = "Трансляция — Рукоборец";
+    const onKey = (e: KeyboardEvent) => {
+      if (["f", "F", "а", "А", "F11"].includes(e.key)) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <div className="flex h-screen flex-col bg-black p-1.5" onDoubleClick={() => toggleFullscreen()}>
+      <StreamWall big />
+    </div>
+  );
+}
 
 function FightsScreen() {
   const { night } = useFights();
@@ -46,7 +66,9 @@ function BoardScreen() {
 }
 
 export default function Board() {
-  if (new URLSearchParams(window.location.search).get("board") === "fights") return <FightsScreen />;
+  const mode = new URLSearchParams(window.location.search).get("board");
+  if (mode === "fights") return <FightsScreen />;
+  if (mode === "stream") return <StreamScreen />;
   return (
     <StoreProvider>
       <BoardScreen />
