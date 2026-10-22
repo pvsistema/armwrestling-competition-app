@@ -819,13 +819,41 @@ export function biathlon(
       }
     }
   }
-  for (const r of rows) {
-    const hands = [r.left, r.right];
-    const podium = hands.every((p) => p === 2 || p === 3) && hands.includes(3);
-    if (r.place === 4 && podium) {
-      r.place = 3;
-      const n = athletes[r.id]?.name ?? "";
-      r.note = `${n}: места на руках ${r.left} и ${r.right}, в сумме 4-е — присуждается 3-е место, в протоколе два 3-х места (п. 2.7 Правил).`;
+  const award = (r: BiathlonRow, pos: number): { place: number; rule: string } | null => {
+    if (r.place !== pos || r.right == null || r.left == null) return null;
+    const h = [r.left, r.right];
+    if (pos === 3 && h.every((p) => p === 2)) return { place: 2, rule: "2.7" };
+    if ((pos === 4 || pos === 5) && h.every((p) => p === 2 || p === 3) && h.includes(3)) return { place: 3, rule: "2.8" };
+    if (pos === 4 && h.includes(1)) return { place: 3, rule: "2.9" };
+    return null;
+  };
+  const awarded = new Map<string, { place: number; rule: string; was: number }>();
+  rows.forEach((r, i) => {
+    const w = award(r, i + 1);
+    if (w) awarded.set(r.id, { ...w, was: i + 1 });
+  });
+  if (awarded.size) {
+    for (const r of rows) {
+      const w = awarded.get(r.id);
+      if (w) r.place = w.place;
+    }
+    const idx = new Map(rows.map((r, i) => [r.id, i]));
+    rows.sort((x, y) => x.place - y.place || idx.get(x.id)! - idx.get(y.id)!);
+    rows.forEach((r, i) => {
+      if (awarded.has(r.id)) return;
+      r.place = r.decider && i > 0 ? rows[i - 1].place : i + 1;
+    });
+    for (const p of [2, 3]) {
+      const same = rows.filter((r) => r.place === p);
+      if (same.length < 2) continue;
+      const word = p === 2 ? (same.length === 2 ? "два 2-х места" : `${same.length} вторых места`) : same.length === 2 ? "два 3-х места" : "три 3-х места";
+      const next = rows.find((r) => r.place > p);
+      for (const r of same) {
+        const w = awarded.get(r.id);
+        if (!w) continue;
+        const n = athletes[r.id]?.name ?? "";
+        r.note = `${n}: места на руках ${r.left} и ${r.right}, в сумме ${w.was}-е — присуждается ${p}-е место (п. ${w.rule} Правил). В протоколе ${word}${next ? `, следующий спортсмен — ${next.place}-й` : ""}.`;
+      }
     }
   }
   return rows;

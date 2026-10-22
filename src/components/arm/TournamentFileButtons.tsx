@@ -40,7 +40,7 @@ export default function TournamentFileButtons() {
       const blob = await r.blob();
       const data = await readTournamentFile(new File([blob], "test.json"));
       importData(data);
-      toast({ title: "Тестовый турнир загружен", description: "Неявка, 2 фола, травма, равенство, п. 2.7, олимпийская и круговая системы." });
+      toast({ title: "Тестовый турнир загружен", description: "Неявка, 2 фола, травма, равенство, п. 2.7–2.9 (два 2-х и два 3-х места), олимпийская и круговая системы." });
     } catch (err) {
       toast({ title: "Не удалось загрузить тест", description: (err as Error).message, variant: "destructive" });
     }
