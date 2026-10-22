@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS overlay_live (
+  key VARCHAR(40) PRIMARY KEY,
+  data TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

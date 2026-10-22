@@ -7,11 +7,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Board from "./pages/Board";
 import NotFound from "./pages/NotFound";
+import ObsOverlay from "./pages/ObsOverlay";
 
 const queryClient = new QueryClient();
 const isBoard = new URLSearchParams(window.location.search).has("board");
+const isObs = new URLSearchParams(window.location.search).has("overlay");
 
-const App = () => (
+const App = () => isObs ? <ObsOverlay /> : (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />

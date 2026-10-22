@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import StreamPlayer from "./StreamPlayer";
 import LiveOverlay from "./LiveOverlay";
+import ObsPanel from "./ObsPanel";
 import { useStore } from "@/lib/store";
 
 const LAYOUTS: { v: Layout; icon: string; label: string }[] = [
@@ -334,6 +335,7 @@ export default function StreamSection() {
             </>
           )}
         </div>
+        {overlay.mode !== "off" && <ObsPanel />}
         <StreamWall />
       </div>
     </div>

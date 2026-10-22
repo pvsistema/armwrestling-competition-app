@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "publish", "method": "POST", "path": "/", "body": {"key": "testkey01", "bar": {"head": "Тест"}}, "expectedStatus": 200, "expectedBody": {"ok": true}, "bodyMatcher": "partial"},
+  {"name": "read", "method": "GET", "path": "/?key=testkey01", "expectedStatus": 200, "expectedBody": {"bar": {"head": "Тест"}}, "bodyMatcher": "partial"},
+  {"name": "bad key", "method": "GET", "path": "/?key=x", "expectedStatus": 400}
+]}

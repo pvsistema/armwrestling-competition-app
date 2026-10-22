@@ -12,6 +12,7 @@ import HomeSection from "@/components/arm/HomeSection";
 import FarSection from "@/components/arm/FarSection";
 import FightsSection from "@/components/arm/fights/FightsSection";
 import StreamSection from "@/components/arm/stream/StreamSection";
+import { ObsPublisher } from "@/components/arm/stream/ObsPanel";
 import ClearTournament from "@/components/arm/ClearTournament";
 import NeedGroups from "@/components/arm/NeedGroups";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
@@ -66,6 +67,7 @@ function Shell() {
           <AppHeader section={section} onSection={setSection} right={right} />
         </div>
         <main className="flex flex-1 flex-col gap-3">
+          <ObsPublisher />
           <PrintFooter />
           <RestoreBackup />
           <HandDoneDialog />
