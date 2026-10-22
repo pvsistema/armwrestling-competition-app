@@ -10,6 +10,7 @@ import TournamentFileButtons from "@/components/arm/TournamentFileButtons";
 import HelpSheet from "@/components/arm/HelpSheet";
 import HomeSection from "@/components/arm/HomeSection";
 import FarSection from "@/components/arm/FarSection";
+import FightsSection from "@/components/arm/fights/FightsSection";
 import ClearTournament from "@/components/arm/ClearTournament";
 import NeedGroups from "@/components/arm/NeedGroups";
 import AutoBackupBadge from "@/components/arm/AutoBackupBadge";
@@ -82,6 +83,7 @@ function Shell() {
           {section === "results" && <ResultsSection />}
           {section === "board" && <BoardSection />}
           {section === "far" && <FarSection onRegistered={() => setSection("athletes")} />}
+          {section === "fights" && <FightsSection />}
           {section === "athletes" && !locked && (
             <div className="flex flex-wrap gap-2">
               <ImportAthletes />

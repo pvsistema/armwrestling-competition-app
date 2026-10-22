@@ -32,9 +32,9 @@ export const isBoardWindow = () => new URLSearchParams(window.location.search).h
 /** Запущено в настольной программе (оболочка C# / WebView2). */
 export const isDesktop = () => typeof navigator !== "undefined" && navigator.userAgent.includes("ArmsportDesktop");
 
-export async function openBoardWindow() {
-  const url = `${window.location.origin}${import.meta.env.BASE_URL}?board=1`;
-  const w = window.open(url, "armsport-board", "popup=yes,width=1600,height=900");
+export async function openBoardWindow(mode?: "fights") {
+  const url = `${window.location.origin}${import.meta.env.BASE_URL}?board=${mode ?? 1}`;
+  const w = window.open(url, mode ? "armsport-board-fights" : "armsport-board", "popup=yes,width=1600,height=900");
   if (isDesktop()) return;
   if (!w) throw new Error("Браузер заблокировал новое окно — разрешите всплывающие окна для этого сайта.");
   w.focus();
