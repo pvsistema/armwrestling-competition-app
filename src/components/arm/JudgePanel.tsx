@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, OUT_LABEL, OutReason, WinHow, fmtKg, standings, surname } from "@/lib/arm";
 import CallBar from "./CallBar";
+import FarPhotoCheck from "./FarPhotoCheck";
 import HandStageBar from "./HandStageBar";
 import { handStage, waitingSecond } from "@/lib/queue";
 import { pendingQueue } from "@/lib/queue";
@@ -150,11 +151,17 @@ export default function JudgePanel({ table, onGoBracket }: Props) {
               {cls?.label} · {stage} · тур {current.round} · {losses} {losses === 1 ? "поражение" : "поражений"}
             </span>
           </div>
-          <h1 className="mt-1.5 text-[clamp(24px,2.6vw,40px)] font-medium leading-[1.08] tracking-[-0.02em]">{a?.name ?? "—"}</h1>
-          <p className="mt-1 text-sm text-panel-muted">
-            {fmtKg(a?.weight)} кг · {a?.city || a?.club || "—"}
-            {a?.club && a?.city ? ` · ${a.club}` : ""}
-          </p>
+          <div className="mt-1.5 flex items-start gap-3">
+            {(tournament.showFarPhoto ?? true) && <FarPhotoCheck farId={a?.farId} name={a?.name ?? ""} corner={corner} />}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[clamp(24px,2.6vw,40px)] font-medium leading-[1.08] tracking-[-0.02em]">{a?.name ?? "—"}</h1>
+              <p className="mt-1 text-sm text-panel-muted">
+                {fmtKg(a?.weight)} кг · {a?.city || a?.club || "—"}
+                {a?.club && a?.city ? ` · ${a.club}` : ""}
+                {a?.farId && <span className="ml-1 font-mono text-xs">· ФАР № {a.farId}</span>}
+              </p>
+            </div>
+          </div>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <button className="pill !py-1.5 text-sm" onClick={() => pen(current, id, "r")} title="Замечание (п. 11.14). Два замечания = фол">
               <Icon name="TriangleAlert" size={14} /> Замечание

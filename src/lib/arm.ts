@@ -136,6 +136,8 @@ export interface Tournament {
   showLogo?: boolean;
   /** Колонка «№ паспорта ФАР» в протоколах и стартовых листах. */
   showFar?: boolean;
+  /** Фото из паспорта ФАР на пульте судьи. */
+  showFarPhoto?: boolean;
   restShort?: number;
   restLong?: number;
   system?: System;

@@ -100,6 +100,14 @@ export default function ClassesSection({ onNext }: { onNext?: () => void }) {
             >
               <Icon name={(tournament.showFar ?? true) ? "SquareCheck" : "Square"} size={15} /> № паспорта ФАР в протоколах и стартовых листах
             </button>
+            <button
+              type="button"
+              className={cn("pill justify-start", (tournament.showFarPhoto ?? true) && "pill-on")}
+              onClick={() => setTournament({ showFarPhoto: !(tournament.showFarPhoto ?? true) })}
+              title="Фото загружается с сайта ФАР, нужен интернет"
+            >
+              <Icon name={(tournament.showFarPhoto ?? true) ? "SquareCheck" : "Square"} size={15} /> Фото из паспорта ФАР на пульте судьи
+            </button>
             <RestSettings />
             <L label="Требования для разрядов (печатается в протоколе)">
               <textarea className="field min-h-[72px] py-2" value={tournament.requirements ?? ""} onChange={(e) => setTournament({ requirements: e.target.value })} placeholder="КМС — 1 место при не менее 8 участниках в категории…" />
