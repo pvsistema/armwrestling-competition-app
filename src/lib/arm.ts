@@ -138,6 +138,8 @@ export interface Tournament {
   showFar?: boolean;
   /** Фото из паспорта ФАР на пульте судьи. */
   showFarPhoto?: boolean;
+  /** Фото из паспорта ФАР на табло для зрителей. */
+  showFarPhotoBoard?: boolean;
   restShort?: number;
   restLong?: number;
   system?: System;

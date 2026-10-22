@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
+import FarFace from "./FarFace";
 import { GROUP_LABEL, HAND_LABEL, HOW_LABEL, Match, fmtKg, surname } from "@/lib/arm";
 import { globalBreak, handStage, pendingQueue, tableBreak, waitingSecond } from "@/lib/queue";
 import HandBreak from "./HandBreak";
@@ -37,6 +38,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
     (matches as DM[])
       .filter((m) => m.winner && (t === "all" || m.table === t))
       .sort((a, b) => (b.decidedAt ?? 0) - (a.decidedAt ?? 0));
+  const photos = tournament.showFarPhotoBoard ?? true;
   const fresh = (m?: DM) => !!m?.decidedAt && now.getTime() - m.decidedAt < 10000;
 
   const winnerBanner = (m: DM, big: boolean) => {
@@ -53,6 +55,14 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         <div className="flex items-center gap-2 font-mono text-sm uppercase text-panel-muted md:text-lg">
           <Icon name="Trophy" size={big ? 28 : 18} className="text-primary" /> Победитель · {blue ? "синий угол" : "красный угол"}
         </div>
+        {photos && (
+          <FarFace
+            farId={amap[m.winner!]?.farId}
+            name={amap[m.winner!]?.name ?? ""}
+            corner={blue ? "blue" : "red"}
+            className={big ? "h-[clamp(140px,22vh,280px)] w-[clamp(118px,18.5vh,236px)]" : "h-[clamp(64px,9vh,110px)] w-[clamp(54px,7.6vh,92px)]"}
+          />
+        )}
         <div className={cn("font-semibold leading-tight tracking-tight", blue ? "text-corner-blue" : "text-corner-red", big ? "text-[clamp(44px,7vw,128px)]" : "text-[clamp(22px,2.6vw,44px)]")}>
           {amap[m.winner!]?.name}
         </div>
@@ -246,7 +256,16 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
   function name(id: string, corner: "blue" | "red", size: "sm" | "md" | "lg", m?: Match) {
     const a = amap[id];
     return (
-      <div className={cn("border-l-4 pl-3", corner === "blue" ? "border-corner-blue" : "border-corner-red")}>
+      <div className={cn("flex items-center gap-3 border-l-4 pl-3", corner === "blue" ? "border-corner-blue" : "border-corner-red")}>
+        {photos && (
+          <FarFace
+            farId={a?.farId}
+            name={a?.name ?? ""}
+            corner={corner}
+            className={size === "lg" ? "h-[clamp(72px,10vh,130px)] w-[clamp(60px,8.4vh,108px)]" : size === "md" ? "h-[clamp(56px,7.5vh,96px)] w-[clamp(47px,6.3vh,80px)]" : "h-[clamp(44px,5.5vh,68px)] w-[clamp(37px,4.6vh,57px)]"}
+          />
+        )}
+        <div className="min-w-0 flex-1">
         <div
           className={cn(
             "break-words font-semibold leading-tight tracking-tight",
@@ -258,6 +277,7 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
         </div>
         <div className={cn("text-panel-muted", size === "sm" ? "line-clamp-2 text-xs md:text-sm" : "truncate text-sm md:text-base")}>
           {fmtKg(a?.weight)} кг{a?.club ? ` · ${a.club}` : ""}
+        </div>
         </div>
       </div>
     );
@@ -314,8 +334,18 @@ export default function BoardView({ focus, onFocus, fullscreen, standalone }: Pr
                     i === 0 ? "border-t-corner-blue" : "border-t-corner-red md:order-3 md:text-right",
                   )}
                 >
-                  <div className={cn("font-mono text-sm uppercase md:text-lg", i === 0 ? "text-corner-blue" : "text-corner-red")}>
-                    {i === 0 ? "синий угол" : "красный угол"}
+                  <div className={cn("flex items-center gap-4", i === 1 && "md:flex-row-reverse")}>
+                    {photos && (
+                      <FarFace
+                        farId={amap[id]?.farId}
+                        name={amap[id]?.name ?? ""}
+                        corner={i === 0 ? "blue" : "red"}
+                        className="h-[clamp(120px,24vh,300px)] w-[clamp(100px,20vh,250px)]"
+                      />
+                    )}
+                    <div className={cn("font-mono text-sm uppercase md:text-lg", i === 0 ? "text-corner-blue" : "text-corner-red")}>
+                      {i === 0 ? "синий угол" : "красный угол"}
+                    </div>
                   </div>
                   <div className="mt-3 text-[clamp(36px,5.5vw,104px)] font-semibold leading-[0.95] tracking-[-0.03em]">{amap[id]?.name}</div>
                   <div className="mt-2 min-h-[1em]">{penDots(current, id, true)}</div>
