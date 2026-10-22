@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useStore } from "@/lib/store";
-import { BACKUP_EVERY_MIN, useAutoBackup } from "@/lib/autoBackup";
+import { BACKUP_OPTIONS, keepFor, useAutoBackup } from "@/lib/autoBackup";
 import { folderSupported, pickFolder } from "@/lib/saveFolder";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ const ago = (t: number, now: number) => {
 /** Значок автокопии в шапке: когда сохранено, куда, включить/выключить. */
 export default function AutoBackupBadge() {
   const { exportData } = useStore();
-  const { status, toggle, allow, saveNow } = useAutoBackup(exportData());
+  const { status, toggle, setEvery, allow, saveNow } = useAutoBackup(exportData());
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
@@ -52,7 +52,7 @@ export default function AutoBackupBadge() {
           Автокопия турнира <span className={cn("text-xs font-normal", warn ? "text-corner-red" : "text-panel-muted")}>{text}</span>
         </div>
         <p className="text-xs leading-relaxed text-panel-muted">
-          Каждые {BACKUP_EVERY_MIN} минут, если что-то изменилось, программа сохраняет копию в подпапку «Копии турнира». Хранятся последние 48 копий (12 часов). Открыть копию — «Открыть файл» в разделе «Участники».
+          Каждые {status.every} мин, если что-то изменилось, программа сохраняет копию в подпапку «Копии турнира». Хранятся копии за последние {Math.round((keepFor(status.every) * status.every) / 60)} ч (до {keepFor(status.every)} файлов). Открыть копию — «Восстановить из копии».
         </p>
         {status.lastPath && (
           <div className="rounded-md bg-surface px-3 py-2 text-xs">
@@ -81,8 +81,27 @@ export default function AutoBackupBadge() {
             <Icon name="History" size={15} /> Восстановить из копии…
           </button>
         )}
+        <div className="flex flex-col gap-1.5">
+          <div className="text-xs text-panel-muted">Как часто сохранять:</div>
+          <div className="grid grid-cols-6 gap-1">
+            {BACKUP_OPTIONS.map((m) => (
+              <button
+                key={m}
+                className={cn(
+                  "rounded-full border px-1 py-1.5 text-xs font-medium transition-colors",
+                  status.on && status.every === m ? "border-primary bg-primary text-primary-foreground" : "border-line hover:bg-surface",
+                )}
+                onClick={() => setEvery(m)}
+                title={`Каждые ${m} мин`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          <div className="text-center text-[11px] text-panel-muted">минут</div>
+        </div>
         <button className={cn("pill justify-start", status.on && "pill-on")} onClick={() => toggle(!status.on)}>
-          <Icon name={status.on ? "SquareCheck" : "Square"} size={15} /> Автокопия каждые {BACKUP_EVERY_MIN} минут
+          <Icon name={status.on ? "SquareCheck" : "Square"} size={15} /> Автокопия {status.on ? `каждые ${status.every} мин` : "выключена"}
         </button>
       </PopoverContent>
     </Popover>
