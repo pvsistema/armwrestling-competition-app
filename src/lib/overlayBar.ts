@@ -144,7 +144,7 @@ export function usePublishOverlay(enabled: boolean) {
   const json = useMemo(() => JSON.stringify(bar), [bar]);
   const [status, setStatus] = useState<"idle" | "ok" | "err">("idle");
   const last = useRef("");
-  const timer = useRef<number>();
+  const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!enabled || !OVERLAY_API) return;
     const send = (force = false) => {
