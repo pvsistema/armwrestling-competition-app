@@ -27,15 +27,14 @@ internal static class Program
             return;
         }
 
-        var web = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-        if (!File.Exists(Path.Combine(web, "index.html")))
+        if (!WebContent.Verify(out var problem))
         {
-            MessageBox.Show($"Не найдены файлы интерфейса:\n{web}\n\nПереустановите программу.",
+            MessageBox.Show($"Файлы программы повреждены или изменены ({problem}).\n\nСкачайте и установите программу заново.",
                 "Армспорт", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
 
-        Application.Run(new MainForm(web));
+        Application.Run(new MainForm(""));
     }
 }
 

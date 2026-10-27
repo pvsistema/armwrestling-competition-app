@@ -17,9 +17,11 @@ internal static class WebEnv
             new CoreWebView2EnvironmentOptions { Language = "ru-RU" });
     }
 
-    public static void Setup(CoreWebView2 core, string webRoot)
+    public static async Task Setup(CoreWebView2 core)
     {
-        core.SetVirtualHostNameToFolderMapping(Program.Host, webRoot, CoreWebView2HostResourceAccessKind.Allow);
+        WebContent.Serve(core);
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(
+            $"Object.defineProperty(window,'__armHw',{{value:'{HardwareId.Value}',writable:false,configurable:false}});");
         var s = core.Settings;
         s.AreDevToolsEnabled = false;
         s.IsZoomControlEnabled = true;

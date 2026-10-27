@@ -56,6 +56,12 @@ echo [2/4] Сборка интерфейса...
 call !PM! run build:desktop
 if errorlevel 1 goto :error
 echo   OK: dist-desktop\
+if "!PM!"=="bun" (
+  call bun "%SCRIPT_DIR%hash-web.mjs"
+) else (
+  call node "%SCRIPT_DIR%hash-web.mjs"
+)
+if errorlevel 1 goto :error
 
 REM ── Шаг 3: Сборка программы C# ──────────────────────────────────────────────
 echo.
@@ -68,6 +74,7 @@ REM ── Шаг 4: Итог ────────────────�
 echo.
 echo [4/4] Готово!
 echo   Программа: %OUT_DIR%\Armsport.exe
+echo   Интерфейс зашит внутрь Armsport.exe и проверяется при каждом запуске.
 echo   Папку Armsport можно скопировать на любой компьютер с Windows 10/11
 echo   (установка .NET на нём не нужна).
 echo.

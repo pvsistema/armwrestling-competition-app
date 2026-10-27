@@ -1,10 +1,15 @@
+import base64
 import hmac
 import json
 import os
 import secrets
+import time
 from datetime import date
 
 import psycopg2
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -21,6 +26,49 @@ def resp(code: int, body: dict) -> dict:
         "headers": {**CORS, "Content-Type": "application/json", "Cache-Control": "no-store"},
         "body": json.dumps(body, ensure_ascii=False, default=str),
     }
+
+
+OFFLINE_DAYS = 30
+_signer = None
+
+
+def b64u(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).decode().rstrip("=")
+
+
+def signer(cur):
+    """Ключ подписи подтверждений: создаётся один раз и хранится в базе."""
+    global _signer
+    if _signer:
+        return _signer
+    cur.execute("SELECT private_pem, public_spki FROM license_signing WHERE id = 1")
+    r = cur.fetchone()
+    if not r:
+        k = ec.generate_private_key(ec.SECP256R1())
+        pem = k.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+        spki = base64.b64encode(k.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)).decode()
+        cur.execute("INSERT INTO license_signing (id, private_pem, public_spki) VALUES (1, %s, %s) ON CONFLICT (id) DO NOTHING", (pem, spki))
+        cur.execute("SELECT private_pem, public_spki FROM license_signing WHERE id = 1")
+        r = cur.fetchone()
+    _signer = (serialization.load_pem_private_key(r[0].encode(), None), r[1])
+    return _signer
+
+
+def make_token(cur, lic: dict, device: str) -> str:
+    """Подписанное подтверждение: ключ, компьютер, срок работы без интернета."""
+    now = int(time.time() * 1000)
+    until = now + OFFLINE_DAYS * 86400000
+    if lic["expires_at"]:
+        end = int(time.mktime(lic["expires_at"].timetuple()) * 1000) + 86400000
+        until = min(until, end)
+    payload = json.dumps(
+        {"k": lic["key"], "d": device, "h": lic["holder"], "e": lic["expires_at"].isoformat() if lic["expires_at"] else None, "i": now, "x": until},
+        ensure_ascii=False, separators=(",", ":"),
+    ).encode()
+    p = b64u(payload)
+    der = signer(cur)[0].sign(p.encode(), ec.ECDSA(hashes.SHA256()))
+    rr, ss = decode_dss_signature(der)
+    return p + "." + b64u(rr.to_bytes(32, "big") + ss.to_bytes(32, "big"))
 
 
 def new_key() -> str:
@@ -83,9 +131,21 @@ def client_action(cur, action: str, body: dict) -> dict:
         return resp(200, {"ok": False, "reason": st})
     cur.execute("SELECT id, active FROM license_devices WHERE license_id = %s AND device_id = %s", (lic["id"], device))
     dev = cur.fetchone()
+    if action == "rebind":
+        old = clip(body.get("old"), 64)
+        cur.execute("SELECT id FROM license_devices WHERE license_id = %s AND device_id = %s AND active", (lic["id"], old))
+        od = cur.fetchone()
+        if od and old != device:
+            if dev:
+                cur.execute("UPDATE license_devices SET active = FALSE WHERE id = %s", (od[0],))
+                cur.execute("UPDATE license_devices SET active = TRUE, last_seen = NOW() WHERE id = %s", (dev[0],))
+            else:
+                cur.execute("UPDATE license_devices SET device_id = %s, last_seen = NOW() WHERE id = %s", (device, od[0]))
+            return resp(200, {"ok": True, **public_info(lic), "token": make_token(cur, lic, device)})
+        action = "check"
     if dev and dev[1]:
         cur.execute("UPDATE license_devices SET last_seen = NOW() WHERE id = %s", (dev[0],))
-        return resp(200, {"ok": True, **public_info(lic)})
+        return resp(200, {"ok": True, **public_info(lic), "token": make_token(cur, lic, device)})
     if action == "check":
         return resp(200, {"ok": False, "reason": "device_released"})
     cur.execute("SELECT COUNT(*) FROM license_devices WHERE license_id = %s AND active", (lic["id"],))
@@ -97,7 +157,7 @@ def client_action(cur, action: str, body: dict) -> dict:
         cur.execute("UPDATE license_devices SET active = TRUE, device_name = %s, activated_at = NOW(), last_seen = NOW() WHERE id = %s", (name, dev[0]))
     else:
         cur.execute("INSERT INTO license_devices (license_id, device_id, device_name) VALUES (%s, %s, %s)", (lic["id"], device, name))
-    return resp(200, {"ok": True, **public_info(lic)})
+    return resp(200, {"ok": True, **public_info(lic), "token": make_token(cur, lic, device)})
 
 
 def admin_list(cur) -> dict:
@@ -158,7 +218,16 @@ def handler(event: dict, context) -> dict:
             return resp(401, {"error": "Неверный пароль"})
         if action == "login":
             return resp(200, {"ok": True})
-    elif action not in ("activate", "check"):
+    elif action == "pubkey":
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            with conn.cursor() as cur:
+                spki = signer(cur)[1]
+            conn.commit()
+        finally:
+            conn.close()
+        return resp(200, {"spki": spki})
+    elif action not in ("activate", "check", "rebind"):
         return resp(400, {"error": "unknown action"})
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])

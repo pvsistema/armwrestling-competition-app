@@ -1,5 +1,48 @@
-{"tests": [
-  {"name": "Сервис отвечает", "method": "GET", "path": "/", "expectedStatus": 200, "expectedBody": {"service": "license"}, "bodyMatcher": "partial"},
-  {"name": "Несуществующий ключ", "method": "POST", "path": "/", "body": {"action": "activate", "key": "AAAA-BBBB-CCCC-DDDD", "device": "test-device-123"}, "expectedStatus": 200, "expectedBody": {"ok": false, "reason": "not_found"}, "bodyMatcher": "partial"},
-  {"name": "Админка без пароля", "method": "POST", "path": "/", "body": {"action": "list"}, "expectedStatus": 401}
-]}
+{
+ "tests": [
+  {
+   "name": "Сервис отвечает",
+   "method": "GET",
+   "path": "/",
+   "expectedStatus": 200,
+   "expectedBody": {
+    "service": "license"
+   },
+   "bodyMatcher": "partial"
+  },
+  {
+   "name": "Несуществующий ключ",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "activate",
+    "key": "AAAA-BBBB-CCCC-DDDD",
+    "device": "test-device-123"
+   },
+   "expectedStatus": 200,
+   "expectedBody": {
+    "ok": false,
+    "reason": "not_found"
+   },
+   "bodyMatcher": "partial"
+  },
+  {
+   "name": "Админка без пароля",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "list"
+   },
+   "expectedStatus": 401
+  },
+  {
+   "name": "Открытый ключ подписи",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "pubkey"
+   },
+   "expectedStatus": 200
+  }
+ ]
+}

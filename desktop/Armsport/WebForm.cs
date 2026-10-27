@@ -46,7 +46,7 @@ internal class WebForm : Form
         }
 
         var core = View.CoreWebView2;
-        WebEnv.Setup(core, WebRoot);
+        await WebEnv.Setup(core);
         core.DocumentTitleChanged += (_, _) =>
         {
             if (!string.IsNullOrWhiteSpace(core.DocumentTitle) && !core.DocumentTitle.StartsWith(Program.Host))

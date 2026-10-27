@@ -24,12 +24,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="app.ico" />
-    <Content Include="..\..\dist-desktop\**\*" Condition="Exists('..\..\dist-desktop')">
-      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
+    <EmbeddedResource Include="..\..\dist-desktop\**\*" Condition="Exists('..\..\dist-desktop')">
+      <LogicalName>web/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
