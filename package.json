@@ -7,7 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "check": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build:desktop": "vite build -c desktop/vite.desktop.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "3.10.0",

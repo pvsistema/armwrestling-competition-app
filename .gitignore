@@ -39,3 +39,7 @@ venv/
 __pycache__/
 *.pyc
 *.egg-info/
+
+# Сборка интерфейса для программы Windows
+dist-desktop
+desktop/release
