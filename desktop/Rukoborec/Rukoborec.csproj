@@ -31,4 +31,9 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <Target Name="CheckWebInterface" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('..\..\dist-desktop\index.html')" Text="Interface not built: run desktop\build.bat (dist-desktop\index.html not found)." />
+    <Error Condition="!$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)WebHashes.g.cs').Contains('] = '))" Text="WebHashes.g.cs is empty: run desktop\build.bat (hash-web.mjs did not write file hashes)." />
+  </Target>
+
 </Project>
