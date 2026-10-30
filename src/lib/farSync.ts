@@ -43,19 +43,27 @@ async function api<T>(params: Record<string, string>, tries = 3): Promise<T> {
   throw new Error(`Сайт ФАР не отвечает (${(last as Error)?.message ?? "ошибка сети"})`);
 }
 
-async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>, tick: () => void): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let i = 0;
+/**
+ * Раздаёт элементы пачками по size на n параллельных вызовов. Что сервер не успел (left) —
+ * возвращается в очередь, но не больше rounds раз на элемент.
+ */
+async function drain(items: string[], size: number, n: number, fn: (xs: string[]) => Promise<string[]>, tick: () => void) {
+  const queue = [...items];
+  const tries = new Map<string, number>();
   await Promise.all(
-    Array.from({ length: Math.min(n, items.length) }, async () => {
-      while (i < items.length) {
-        const k = i++;
-        out[k] = await fn(items[k]);
+    Array.from({ length: n }, async () => {
+      while (queue.length) {
+        const part = queue.splice(0, size);
+        const left = await fn(part);
+        for (const x of left) {
+          const k = (tries.get(x) ?? 0) + 1;
+          tries.set(x, k);
+          if (k < 3) queue.push(x);
+        }
         tick();
       }
     }),
   );
-  return out;
 }
 
 export interface SyncProgress {
@@ -85,30 +93,36 @@ export async function syncFar(full: boolean, onProgress: (p: SyncProgress) => vo
   const head = await api<{ updated: string; regions: [string, string][] }>({ action: "regions" });
   if (!head.regions.length) throw new Error("На сайте ФАР не найден список регионов");
 
-  let done = 0;
-  const lists = await pool(
-    head.regions,
-    6,
-    ([club]) => api<{ list: [string, string][] }>({ action: "region", club }).then((r) => r.list),
-    () => onProgress({ stage: "Регионы", done: ++done, total: head.regions.length }),
+  const lists = new Map<string, [string, string][]>();
+  await drain(
+    head.regions.map(([club]) => club),
+    12,
+    3,
+    async (clubs) => {
+      const r = await api<{ lists: Record<string, [string, string][]>; left: string[] }>({ action: "regions_batch", clubs: clubs.join(",") });
+      Object.entries(r.lists).forEach(([k, v]) => lists.set(k, v));
+      return r.left;
+    },
+    () => onProgress({ stage: "Регионы", done: lists.size, total: head.regions.length }),
   );
+  const miss = head.regions.filter(([club]) => !lists.has(club)).length;
+  if (miss) throw new Error(`Сайт ФАР не отдал ${miss} регион(ов) — попробуйте обновить ещё раз`);
 
-  const people = head.regions.flatMap(([club, d], ri) => lists[ri].map(([id, name]) => ({ id, name, club, d })));
+  const people = head.regions.flatMap(([club, d]) => lists.get(club)!.map(([id, name]) => ({ id, name, club, d })));
   if (people.length < 1000) throw new Error(`На сайте найдено подозрительно мало спортсменов (${people.length}) — обновление отменено`);
 
   const need = people.filter((p) => full || !old?.byId.has(p.id)).map((p) => p.id);
   const cards = new Map<string, Card>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < need.length; i += 40) chunks.push(need.slice(i, i + 40));
-  done = 0;
-  await pool(
-    chunks,
-    4,
+  await drain(
+    need,
+    200,
+    3,
     async (ids) => {
-      const r = await api<{ cards: Record<string, Card> }>({ action: "cards", ids: ids.join(",") });
+      const r = await api<{ cards: Record<string, Card>; left: string[] }>({ action: "cards", ids: ids.join(",") });
       Object.entries(r.cards).forEach(([k, v]) => cards.set(k, v));
+      return r.left;
     },
-    () => onProgress({ stage: "Карточки спортсменов", done: Math.min(++done * 40, need.length), total: need.length }),
+    () => onProgress({ stage: "Карточки спортсменов", done: cards.size, total: need.length }),
   );
 
   const regions: [string, string][] = [];
