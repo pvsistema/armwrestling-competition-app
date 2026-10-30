@@ -91,7 +91,7 @@ export const EMPTY_CUP: CupState = {
     place: "",
     chiefJudge: "",
     secretary: "",
-    system: "roundrobin",
+    system: "double",
     slots: DEFAULT_SLOTS,
     firstHand: "left",
     pts: { win: 2, draw: 1, loss: 0 },
@@ -475,7 +475,12 @@ function read(): CupState {
     const v = localStorage.getItem(KEY);
     if (!v) return EMPTY_CUP;
     const p = JSON.parse(v) as Partial<CupState>;
-    return { ...EMPTY_CUP, ...p, settings: { ...EMPTY_CUP.settings, ...p.settings } };
+    const settings = { ...EMPTY_CUP.settings, ...p.settings };
+    if (!localStorage.getItem(`${KEY}:doubleDefault`)) {
+      localStorage.setItem(`${KEY}:doubleDefault`, "1");
+      if (!p.brackets?.length && settings.system === "roundrobin") settings.system = "double";
+    }
+    return { ...EMPTY_CUP, ...p, settings };
   } catch {
     return EMPTY_CUP;
   }
