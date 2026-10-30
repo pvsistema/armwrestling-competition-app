@@ -36,7 +36,8 @@ echo.
 echo [1/4] Installing interface dependencies...
 cd /d "%ROOT_DIR%"
 if "!PM!"=="bun" (
-  call bun install
+  echo   Note: "Unknown lockfile version" from an older bun is only a warning - run "bun upgrade" to hide it.
+  call bun install --no-save
 ) else (
   call npm install --no-audit --no-fund --legacy-peer-deps
 )
