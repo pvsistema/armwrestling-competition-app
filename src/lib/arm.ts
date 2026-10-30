@@ -136,6 +136,8 @@ export interface Tournament {
   deputySecretary?: string;
   requirements?: string;
   teamBestOnly?: boolean;
+  /** Не больше N человек от команды в одной весовой категории (0 — без ограничения). */
+  teamLimit?: number;
   judges?: Judge[];
   showLogo?: boolean;
   /** Колонка «№ паспорта ФАР» в протоколах и стартовых листах. */
@@ -347,6 +349,38 @@ export function entryClasses(a: Athlete, groups: AgeGroup[], t: Tournament): Wei
   const ad = adultClassOf(a, groups, t);
   if (ad && !res.some((x) => x.key === ad.key)) res.push(ad);
   return res;
+}
+
+export const DEFAULT_TEAM_LIMIT = 6;
+export const tTeamLimit = (t: Tournament) => t.teamLimit ?? DEFAULT_TEAM_LIMIT;
+
+export interface TeamOverflow {
+  team: string;
+  classKey: string;
+  label: string;
+  ids: string[];
+}
+
+/** Команды, заявившие в одну весовую категорию больше спортсменов, чем разрешено Положением. */
+export function teamOverflows(athletes: Athlete[], groups: AgeGroup[], t: Tournament): TeamOverflow[] {
+  const lim = tTeamLimit(t);
+  if (!lim) return [];
+  const year = tournamentYear(t);
+  const map: Record<string, TeamOverflow> = {};
+  for (const a of athletes) {
+    const team = a.club.trim();
+    if (a.out || !team) continue;
+    const own = [classOf(a, groups, year, t.tolerance ?? 0), adultClassOf(a, groups, t)];
+    for (const c of own) {
+      if (!c) continue;
+      const k = `${team.toLowerCase()}|${c.key}`;
+      const row = (map[k] ||= { team, classKey: c.key, label: `${c.groupName} · ${c.label}`, ids: [] });
+      if (!row.ids.includes(a.id)) row.ids.push(a.id);
+    }
+  }
+  return Object.values(map)
+    .filter((r) => r.ids.length > lim)
+    .sort((x, y) => x.team.localeCompare(y.team, "ru") || x.label.localeCompare(y.label, "ru"));
 }
 
 export function systemFor(t: Tournament, n: number): System {

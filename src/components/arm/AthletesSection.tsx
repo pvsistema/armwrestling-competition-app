@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useClassMap, useStore } from "@/lib/store";
-import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, PARA_HINT, PARA_LABEL, ParaClass, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, tournamentYear } from "@/lib/arm";
+import { AgeGroup, Athlete, DISTRICTS, Gender, HAND_LABEL, Hand, OUT_LABEL, OutReason, RANKS, Tournament, PARA_HINT, PARA_LABEL, ParaClass, adultClassOf, adultGroupFor, adultOn, classOf, groupOf, fmtBirth, fmtKg, isAdmitted, teamOverflows, tTeamLimit, tournamentYear } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import FarNameInput from "./FarNameInput";
@@ -36,7 +36,10 @@ export default function AthletesSection() {
   const [f, setF] = useState(EMPTY);
   const [err, setErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit" | "adult" | "nofar">("all");
+  const [filter, setFilter] = useState<"all" | "weighed" | "pending" | "noadmit" | "adult" | "nofar" | "overflow">("all");
+  const overflows = useMemo(() => teamOverflows(athletes, groups, tournament), [athletes, groups, tournament]);
+  const overIds = useMemo(() => new Set(overflows.flatMap((o) => o.ids)), [overflows]);
+  const teamLimit = tTeamLimit(tournament);
   const needAdmit = !!tournament.requireAdmit;
   const notAdmitted = athletes.filter((a) => !isAdmitted(a, tournament)).length;
 
@@ -50,6 +53,8 @@ export default function AthletesSection() {
       .filter((a) =>
         filter === "all"
           ? true
+          : filter === "overflow"
+            ? overIds.has(a.id)
           : filter === "nofar"
             ? !a.farId
             : filter === "weighed"
@@ -63,7 +68,7 @@ export default function AthletesSection() {
       .filter((a) => !s || `${a.name} ${a.club} ${a.city} ${a.farId ?? ""}`.toLowerCase().includes(s))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [athletes, q, filter, tournament, groups, year]);
+  }, [athletes, q, filter, tournament, groups, year, overIds]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -439,6 +444,30 @@ export default function AthletesSection() {
           <Stat label="ждут весов" value={athletes.length - weighed} accent={athletes.length - weighed > 0} />
           {needAdmit && <Stat label="не допущены" value={notAdmitted} accent={notAdmitted > 0} />}
         </div>
+        {overflows.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-lg border border-corner-red/40 bg-corner-red/5 px-4 py-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Icon name="UsersRound" size={18} className="text-corner-red" />
+              <b className="text-corner-red">Превышен состав команды: не больше {teamLimit} человек в весовой категории</b>
+              <button
+                className={cn("pill ml-auto !py-1 text-xs", filter === "overflow" && "pill-on")}
+                onClick={() => setFilter(filter === "overflow" ? "all" : "overflow")}
+              >
+                <Icon name="Filter" size={14} /> {filter === "overflow" ? "Показать всех" : "Показать этих участников"}
+              </button>
+            </div>
+            <ul className="flex flex-col gap-0.5 text-foreground">
+              {overflows.map((o) => (
+                <li key={`${o.team}|${o.classKey}`}>
+                  «{o.team}» — {o.label}: <b>{o.ids.length}</b> чел. (лишних {o.ids.length - teamLimit})
+                </li>
+              ))}
+            </ul>
+            <div className="text-xs text-panel-muted">
+              Предупреждение, жеребьёвку оно не блокирует. Лимит меняется в разделе «Категории» → «Правила подсчёта».
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
             <Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-panel-muted" />
@@ -513,6 +542,7 @@ export default function AthletesSection() {
                       return !!groups.find((g) => g.id === c?.groupId)?.absolute;
                     })()}
                     needAdmit={needAdmit}
+                    overTeam={overIds.has(a.id)}
                     onPatch={(p) => updateAthlete(a.id, p)}
                     onOut={(r) => withdraw(a.id, r)}
                     onFar={openFar}
@@ -603,6 +633,7 @@ function Row({
   canAdult,
   adult,
   needAdmit,
+  overTeam,
   onWeight,
   onHands,
   onRemove,
@@ -621,6 +652,7 @@ function Row({
   canAdult: boolean;
   adult: boolean;
   needAdmit: boolean;
+  overTeam?: boolean;
   onWeight: (w: number | null) => void;
   onHands: (h: Hand[]) => void;
   onRemove: () => void;
@@ -702,6 +734,11 @@ function Row({
       <td className="px-2 py-2.5 text-panel-muted">
         {a.club || "—"} · {a.city || "—"}
         {a.district && <div className="text-xs">{a.district}</div>}
+        {overTeam && (
+          <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-corner-red/10 px-1.5 py-px text-[11px] font-medium text-corner-red" title="От команды в этой весовой категории заявлено больше спортсменов, чем разрешено">
+            <Icon name="UsersRound" size={11} /> сверх состава команды
+          </div>
+        )}
       </td>
       <td className="px-2 py-2.5">
         <input

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import ClearTournament from "./ClearTournament";
 import { useStore } from "@/lib/store";
-import { isAdultGroup, PARA_LABEL, ParaClass, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tournamentYear, uid, weightClasses } from "@/lib/arm";
+import { isAdultGroup, PARA_LABEL, ParaClass, HAND_FLOW_LABEL, HandFlow, handFlowOf, SYSTEM_LABEL, System, entryClasses, AGE_PRESETS, AgeGroup, DEFAULT_POINTS, Gender, GENDER_LABEL, MODE_LABEL, ScoringMode, tMode, tPoints, tTeamLimit, tournamentYear, uid, weightClasses } from "@/lib/arm";
 import { cn } from "@/lib/utils";
 import { shortLabel } from "@/lib/timers";
 
@@ -380,6 +380,33 @@ function ScoringCard() {
         <button className="self-start text-xs underline text-panel-muted" onClick={() => { setTournament({ points: DEFAULT_POINTS }); setTxt(DEFAULT_POINTS.join(", ")); }}>
           Вернуть стандартные ({DEFAULT_POINTS.join(", ")})
         </button>
+        <div className="flex flex-col gap-1.5">
+          <span className="font-mono text-xs text-panel-muted">Состав команды в одной весовой категории</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[0, 2, 4, 6, 8].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={cn("pill !px-3 !py-1 text-xs", tTeamLimit(tournament) === n && "pill-on")}
+                onClick={() => setTournament({ teamLimit: n })}
+              >
+                {n ? `до ${n}` : "без ограничения"}
+              </button>
+            ))}
+            <input
+              type="number"
+              min={0}
+              max={99}
+              className="field !h-8 !w-16 !px-2 text-center font-mono"
+              value={tTeamLimit(tournament)}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (Number.isFinite(n)) setTournament({ teamLimit: Math.max(0, Math.min(99, n)) });
+              }}
+            />
+          </div>
+          <span className="text-xs text-panel-muted">По Положению ФАР — не более 6 человек. При превышении в разделе «Участники» появится предупреждение.</span>
+        </div>
       </div>
     </div>
   );
