@@ -155,8 +155,8 @@ export function usePublishOverlay(enabled: boolean) {
         .catch(() => setStatus("err"));
     };
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => send(), 150);
-    const keep = window.setInterval(() => send(true), 30000);
+    timer.current = window.setTimeout(() => send(), 400);
+    const keep = window.setInterval(() => send(true), 10 * 60000);
     return () => window.clearInterval(keep);
   }, [json, enabled]);
   return status;
