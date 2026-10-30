@@ -29,6 +29,7 @@ import DemoMark from "@/components/arm/DemoMark";
 import Icon from "@/components/ui/icon";
 import { StoreProvider, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { desktopVersion } from "@/lib/boardSync";
 
 function Shell() {
   const [section, setSection] = useState<Section>("home");
@@ -110,6 +111,7 @@ function Shell() {
         </main>
       </div>
       <footer className="flex justify-end px-3 pt-0.5 text-xs font-semibold text-gold print:hidden">
+        {desktopVersion() && <span className="mr-auto pl-1 font-normal text-panel-muted">Версия {desktopVersion()}</span>}
         Разработал: Ипатов Сергей Геннадьевич
       </footer>
     </div>

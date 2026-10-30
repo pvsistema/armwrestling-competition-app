@@ -13,7 +13,9 @@
     <Product>Армспорт</Product>
     <Description>Армспорт — программа для турниров по армрестлингу</Description>
     <Company>Ипатов Сергей Геннадьевич</Company>
-    <Version>1.0.0</Version>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\version.txt').Trim())</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Copyright>© Ипатов Сергей Геннадьевич</Copyright>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>

@@ -7,7 +7,7 @@ internal sealed class MainForm : WebForm
 {
     private BoardForm? _board;
 
-    public MainForm(string webRoot) : base(webRoot, Program.StartUrl, "Армспорт — турнир по армрестлингу")
+    public MainForm(string webRoot) : base(webRoot, Program.StartUrl, $"Армспорт {Program.Version} — турнир по армрестлингу")
     {
         MinimumSize = new Size(1024, 700);
         Size = new Size(1440, 900);

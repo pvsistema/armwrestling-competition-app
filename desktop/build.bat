@@ -10,14 +10,19 @@ set "SCRIPT_DIR=%~dp0"
 set "ROOT_DIR=%SCRIPT_DIR%.."
 set "APP_DIR=%SCRIPT_DIR%Armsport"
 set "OUT_DIR=%SCRIPT_DIR%release\Armsport"
+set "REL_DIR=%SCRIPT_DIR%release"
+set "APP_VER="
+set /p APP_VER=<"%SCRIPT_DIR%version.txt"
+for /f "tokens=* delims= " %%v in ("!APP_VER!") do set "APP_VER=%%v"
+if not defined APP_VER set "APP_VER=1.0.0"
 
 echo.
 echo ============================================
-echo   Armsport Desktop - build (C# / .NET 8)
+echo   Armsport Desktop !APP_VER! - build (C# / .NET 8)
 echo ============================================
 echo.
 
-echo [0/4] Checking installed tools...
+echo [0/5] Checking installed tools...
 where dotnet >nul 2>nul
 if errorlevel 1 goto no_dotnet
 dotnet --list-sdks | findstr /b "8. 9. 10." >nul
@@ -33,7 +38,7 @@ if not defined PM goto no_node
 echo   OK: !PM!
 
 echo.
-echo [1/4] Installing interface dependencies...
+echo [1/5] Installing interface dependencies...
 cd /d "%ROOT_DIR%"
 if "!PM!"=="bun" (
   echo   Note: "Unknown lockfile version" from an older bun is only a warning - run "bun upgrade" to hide it.
@@ -44,7 +49,7 @@ if "!PM!"=="bun" (
 if errorlevel 1 goto build_error
 
 echo.
-echo [2/4] Building interface...
+echo [2/5] Building interface...
 call !PM! run build:desktop
 if errorlevel 1 goto build_error
 echo   OK: dist-desktop
@@ -56,19 +61,41 @@ if "!PM!"=="bun" (
 if errorlevel 1 goto build_error
 
 echo.
-echo [3/4] Building C# program...
+echo [3/5] Building C# program...
 if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
-dotnet publish "%APP_DIR%\Armsport.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUT_DIR%"
+dotnet publish "%APP_DIR%\Armsport.csproj" -c Release -p:Version=!APP_VER! -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUT_DIR%"
 if errorlevel 1 goto build_error
 
 echo.
-echo [4/4] Done!
+echo [4/5] Building installer (Inno Setup)...
+set "ISCC="
+for %%p in ("%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" "%ProgramFiles%\Inno Setup 6\ISCC.exe" "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe") do (
+  if not defined ISCC if exist %%p set "ISCC=%%~p"
+)
+if not defined ISCC (
+  where iscc >nul 2>nul && set "ISCC=iscc"
+)
+set "SETUP_EXE="
+if defined ISCC (
+  if exist "%REL_DIR%\Armsport-Setup-!APP_VER!.exe" del /q "%REL_DIR%\Armsport-Setup-!APP_VER!.exe"
+  "!ISCC!" /Q "/DAppVersion=!APP_VER!" "%SCRIPT_DIR%installer\Armsport.iss"
+  if errorlevel 1 goto build_error
+  set "SETUP_EXE=%REL_DIR%\Armsport-Setup-!APP_VER!.exe"
+  echo   OK: !SETUP_EXE!
+) else (
+  echo   Inno Setup 6 not found - installer skipped.
+  echo   Install it from https://jrsoftware.org/isdl.php and run build.bat again.
+)
+
+echo.
+echo [5/5] Done! Version !APP_VER!
 echo   Program: %OUT_DIR%\Armsport.exe
+if defined SETUP_EXE echo   Installer: !SETUP_EXE!
 echo   The interface is embedded into Armsport.exe and verified on every start.
 echo   The Armsport folder can be copied to any Windows 10/11 PC (no .NET needed).
 echo.
 echo ============================================
-start "" "%OUT_DIR%"
+start "" "%REL_DIR%"
 pause
 exit /b 0
 

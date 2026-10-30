@@ -7,6 +7,12 @@ internal static class Program
     public const string Host = "app.armsport";
     public static string StartUrl => $"https://{Host}/index.html";
 
+    /// <summary>Номер версии из desktop/version.txt (вшивается при сборке).</summary>
+    public static string Version { get; } = FormatVersion(typeof(Program).Assembly.GetName().Version);
+
+    private static string FormatVersion(System.Version? v) =>
+        v is null ? "1.0.0" : v.Revision > 0 ? v.ToString(4) : v.ToString(3);
+
     [STAThread]
     private static void Main()
     {

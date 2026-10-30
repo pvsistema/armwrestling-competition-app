@@ -50,7 +50,7 @@ internal class WebForm : Form
         core.DocumentTitleChanged += (_, _) =>
         {
             if (!string.IsNullOrWhiteSpace(core.DocumentTitle) && !core.DocumentTitle.StartsWith(Program.Host))
-                Text = core.DocumentTitle;
+                Text = $"{core.DocumentTitle} — версия {Program.Version}";
         };
         core.ContainsFullScreenElementChanged += (_, _) => _fs.Set(core.ContainsFullScreenElement);
         core.NewWindowRequested += OnNewWindow;

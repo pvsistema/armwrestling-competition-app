@@ -29,7 +29,7 @@ internal static class WebEnv
         s.AreDefaultContextMenusEnabled = true;
         s.IsGeneralAutofillEnabled = false;
         s.IsPasswordAutosaveEnabled = false;
-        s.UserAgent += " ArmsportDesktop/1.0";
+        s.UserAgent += $" ArmsportDesktop/{Program.Version}";
 
         core.NavigationStarting += (_, e) =>
         {

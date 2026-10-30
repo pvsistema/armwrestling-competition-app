@@ -32,6 +32,9 @@ export const isBoardWindow = () => new URLSearchParams(window.location.search).h
 /** Запущено в настольной программе (оболочка C# / WebView2). */
 export const isDesktop = () => typeof navigator !== "undefined" && navigator.userAgent.includes("ArmsportDesktop");
 
+/** Номер версии программы для Windows (из её user-agent) или null в браузере. */
+export const desktopVersion = () => (typeof navigator === "undefined" ? null : navigator.userAgent.match(/ArmsportDesktop\/([\d.]+)/)?.[1] ?? null);
+
 export async function openBoardWindow(mode?: "fights" | "cup") {
   const url = `${window.location.origin}${import.meta.env.BASE_URL}?board=${mode ?? 1}`;
   const w = window.open(url, mode ? `armsport-board-${mode}` : "armsport-board", "popup=yes,width=1600,height=900");
