@@ -5,6 +5,8 @@ import BoardView from "@/components/arm/BoardView";
 import DemoMark from "@/components/arm/DemoMark";
 import FightBoard from "@/components/arm/fights/FightBoard";
 import { useFights } from "@/lib/fights";
+import { useCup } from "@/lib/teamCup";
+import CupBoard from "@/components/arm/cup/CupBoard";
 import { StreamWall } from "@/components/arm/stream/StreamSection";
 
 function StreamScreen() {
@@ -47,6 +49,27 @@ function FightsScreen() {
   );
 }
 
+function CupScreen() {
+  const { cup } = useCup();
+  useEffect(() => {
+    document.title = "Табло командного кубка — Рукоборец";
+    const onKey = (e: KeyboardEvent) => {
+      if (["f", "F", "а", "А", "F11"].includes(e.key)) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <div className="flex h-screen flex-col bg-navy p-2" onDoubleClick={() => toggleFullscreen()}>
+      <DemoMark />
+      <CupBoard cup={cup} big />
+    </div>
+  );
+}
+
 function BoardScreen() {
   const [focus, setFocus] = useBoardFocus();
   useEffect(() => {
@@ -75,6 +98,7 @@ function BoardScreen() {
 export default function Board() {
   const mode = new URLSearchParams(window.location.search).get("board");
   if (mode === "fights") return <FightsScreen />;
+  if (mode === "cup") return <CupScreen />;
   if (mode === "stream")
     return (
       <StoreProvider>

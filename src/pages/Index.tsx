@@ -12,6 +12,7 @@ import HelpSheet from "@/components/arm/HelpSheet";
 import HomeSection from "@/components/arm/HomeSection";
 import FarSection from "@/components/arm/FarSection";
 import FightsSection from "@/components/arm/fights/FightsSection";
+import CupSection from "@/components/arm/cup/CupSection";
 import StreamSection from "@/components/arm/stream/StreamSection";
 import { ObsPublisher } from "@/components/arm/stream/ObsPanel";
 import ClearTournament from "@/components/arm/ClearTournament";
@@ -96,6 +97,7 @@ function Shell() {
           {section === "board" && <BoardSection />}
           {section === "far" && <FarSection onRegistered={() => setSection("athletes")} />}
           {section === "fights" && <FightsSection />}
+          {section === "cup" && <CupSection />}
           {section === "stream" && <StreamSection />}
           {section === "athletes" && !locked && (
             <div className="flex flex-wrap gap-2">
