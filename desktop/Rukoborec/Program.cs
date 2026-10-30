@@ -1,6 +1,6 @@
 using Microsoft.Web.WebView2.Core;
 
-namespace Armsport;
+namespace Rukoborec;
 
 internal static class Program
 {
@@ -27,7 +27,7 @@ internal static class Program
             var r = MessageBox.Show(
                 "Для работы программы нужен компонент Microsoft Edge WebView2 Runtime.\n\n" +
                 "Открыть страницу загрузки?",
-                "Армспорт", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                "Рукоборец", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (r == DialogResult.Yes)
                 Shell.Open("https://developer.microsoft.com/microsoft-edge/webview2/#download-section");
             return;
@@ -36,7 +36,7 @@ internal static class Program
         if (!WebContent.Verify(out var problem))
         {
             MessageBox.Show($"Файлы программы повреждены или изменены ({problem}).\n\nСкачайте и установите программу заново.",
-                "Армспорт", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "Рукоборец", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
 

@@ -1,6 +1,6 @@
 using Microsoft.Web.WebView2.Core;
 
-namespace Armsport;
+namespace Rukoborec;
 
 /// <summary>Общее окружение WebView2: одни данные турнира (localStorage) для всех окон.</summary>
 internal static class WebEnv

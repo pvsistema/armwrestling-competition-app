@@ -7,11 +7,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <AssemblyName>Armsport</AssemblyName>
-    <RootNamespace>Armsport</RootNamespace>
+    <AssemblyName>Rukoborec</AssemblyName>
+    <RootNamespace>Rukoborec</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Product>Армспорт</Product>
-    <Description>Армспорт — программа для турниров по армрестлингу</Description>
+    <Product>Рукоборец</Product>
+    <Description>Рукоборец — программа для турниров по армрестлингу</Description>
     <Company>Ипатов Сергей Геннадьевич</Company>
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\version.txt').Trim())</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

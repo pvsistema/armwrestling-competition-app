@@ -1,13 +1,13 @@
 using Microsoft.Web.WebView2.Core;
 
-namespace Armsport;
+namespace Rukoborec;
 
 /// <summary>Главное окно: секретарь, судьи, протоколы.</summary>
 internal sealed class MainForm : WebForm
 {
     private BoardForm? _board;
 
-    public MainForm(string webRoot) : base(webRoot, Program.StartUrl, $"Армспорт {Program.Version} — турнир по армрестлингу")
+    public MainForm(string webRoot) : base(webRoot, Program.StartUrl, $"Рукоборец {Program.Version} — турнир по армрестлингу")
     {
         MinimumSize = new Size(1024, 700);
         Size = new Size(1440, 900);
@@ -15,7 +15,7 @@ internal sealed class MainForm : WebForm
         FormClosing += (_, e) =>
         {
             var r = MessageBox.Show(this, "Закрыть программу? Данные турнира сохранены на этом компьютере.",
-                "Армспорт", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                "Рукоборец", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
             if (r != DialogResult.Yes) e.Cancel = true;
             else _board?.Close();
         };

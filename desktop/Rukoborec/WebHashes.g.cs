@@ -1,5 +1,5 @@
 // Создаётся автоматически при сборке (desktop/hash-web.mjs). Не редактировать.
-namespace Armsport;
+namespace Rukoborec;
 
 internal static class WebHashes
 {

@@ -1,4 +1,4 @@
-namespace Armsport;
+namespace Rukoborec;
 
 /// <summary>Полноэкранный режим окна (табло на проекторе, клавиша F).</summary>
 internal sealed class FullScreen

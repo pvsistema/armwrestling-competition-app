@@ -1,12 +1,12 @@
-﻿; Установщик программы «Армспорт» для Inno Setup 6 (https://jrsoftware.org/isdl.php)
+﻿; Установщик программы «Рукоборец» для Inno Setup 6 (https://jrsoftware.org/isdl.php)
 ; Обычно запускается из desktop\build.bat. Вручную: откройте этот файл в Inno Setup
-; и нажмите Build > Compile — сначала соберите программу (desktop\release\Armsport).
+; и нажмите Build > Compile — сначала соберите программу (desktop\release\Rukoborec).
 
 #ifndef AppVersion
   #define AppVersion Trim(FileRead(FileOpen(AddBackslash(SourcePath) + "..\version.txt")))
 #endif
-#define AppName "Армспорт"
-#define AppExe "Armsport.exe"
+#define AppName "Рукоборец"
+#define AppExe "Rukoborec.exe"
 #define AppPublisher "Ипатов Сергей Геннадьевич"
 
 [Setup]
@@ -20,14 +20,14 @@ AppCopyright=© {#AppPublisher}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoDescription=Установка программы {#AppName}
-DefaultDirName={autopf}\Armsport
+DefaultDirName={autopf}\Rukoborec
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 UninstallDisplayName={#AppName} {#AppVersion}
 UninstallDisplayIcon={app}\{#AppExe}
-SetupIconFile=..\Armsport\app.ico
+SetupIconFile=..\Rukoborec\app.ico
 OutputDir=..\release
-OutputBaseFilename=Armsport-Setup-{#AppVersion}
+OutputBaseFilename=Rukoborec-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -46,7 +46,7 @@ Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "desktopicon"; Description: "Создать значок на рабочем столе"; GroupDescription: "Значки:"
 
 [Files]
-Source: "..\release\Armsport\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\release\Rukoborec\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -56,5 +56,5 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent
 
-; Данные турниров и активация лежат в %LOCALAPPDATA%\Armsport — при удалении и обновлении
+; Данные турниров и активация лежат в %LOCALAPPDATA%\Armsport (служебное имя, не менять) — при удалении и обновлении
 ; программы они сохраняются.

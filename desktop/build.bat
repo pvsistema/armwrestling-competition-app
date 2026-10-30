@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================================================
-REM Armsport Desktop - build (C# .NET 8 + WebView2), Windows
+REM Rukoborec Desktop - build (C# .NET 8 + WebView2), Windows
 REM Requirements: .NET 8 SDK (or newer), Node.js LTS (or bun).
 REM Visual Studio, Rust and C++ are NOT required.
 REM ===========================================================================
@@ -8,8 +8,8 @@ setlocal enabledelayedexpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "ROOT_DIR=%SCRIPT_DIR%.."
-set "APP_DIR=%SCRIPT_DIR%Armsport"
-set "OUT_DIR=%SCRIPT_DIR%release\Armsport"
+set "APP_DIR=%SCRIPT_DIR%Rukoborec"
+set "OUT_DIR=%SCRIPT_DIR%release\Rukoborec"
 set "REL_DIR=%SCRIPT_DIR%release"
 set "APP_VER="
 set /p APP_VER=<"%SCRIPT_DIR%version.txt"
@@ -18,7 +18,7 @@ if not defined APP_VER set "APP_VER=1.0.0"
 
 echo.
 echo ============================================
-echo   Armsport Desktop !APP_VER! - build (C# / .NET 8)
+echo   Rukoborec Desktop !APP_VER! - build (C# / .NET 8)
 echo ============================================
 echo.
 
@@ -63,7 +63,7 @@ if errorlevel 1 goto build_error
 echo.
 echo [3/5] Building C# program...
 if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
-dotnet publish "%APP_DIR%\Armsport.csproj" -c Release -p:Version=!APP_VER! -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUT_DIR%"
+dotnet publish "%APP_DIR%\Rukoborec.csproj" -c Release -p:Version=!APP_VER! -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUT_DIR%"
 if errorlevel 1 goto build_error
 
 echo.
@@ -77,10 +77,10 @@ if not defined ISCC (
 )
 set "SETUP_EXE="
 if defined ISCC (
-  if exist "%REL_DIR%\Armsport-Setup-!APP_VER!.exe" del /q "%REL_DIR%\Armsport-Setup-!APP_VER!.exe"
-  "!ISCC!" /Q "/DAppVersion=!APP_VER!" "%SCRIPT_DIR%installer\Armsport.iss"
+  if exist "%REL_DIR%\Rukoborec-Setup-!APP_VER!.exe" del /q "%REL_DIR%\Rukoborec-Setup-!APP_VER!.exe"
+  "!ISCC!" /Q "/DAppVersion=!APP_VER!" "%SCRIPT_DIR%installer\Rukoborec.iss"
   if errorlevel 1 goto build_error
-  set "SETUP_EXE=%REL_DIR%\Armsport-Setup-!APP_VER!.exe"
+  set "SETUP_EXE=%REL_DIR%\Rukoborec-Setup-!APP_VER!.exe"
   echo   OK: !SETUP_EXE!
 ) else (
   echo   Inno Setup 6 not found - installer skipped.
@@ -89,10 +89,10 @@ if defined ISCC (
 
 echo.
 echo [5/5] Done! Version !APP_VER!
-echo   Program: %OUT_DIR%\Armsport.exe
+echo   Program: %OUT_DIR%\Rukoborec.exe
 if defined SETUP_EXE echo   Installer: !SETUP_EXE!
-echo   The interface is embedded into Armsport.exe and verified on every start.
-echo   The Armsport folder can be copied to any Windows 10/11 PC (no .NET needed).
+echo   The interface is embedded into Rukoborec.exe and verified on every start.
+echo   The Rukoborec folder can be copied to any Windows 10/11 PC (no .NET needed).
 echo.
 echo ============================================
 start "" "%REL_DIR%"

@@ -2,9 +2,9 @@ using System.Reflection;
 using System.Security.Cryptography;
 using Microsoft.Web.WebView2.Core;
 
-namespace Armsport;
+namespace Rukoborec;
 
-/// <summary>Интерфейс программы, зашитый внутрь Armsport.exe, с проверкой целостности файлов.</summary>
+/// <summary>Интерфейс программы, зашитый внутрь Rukoborec.exe, с проверкой целостности файлов.</summary>
 internal static class WebContent
 {
     private const string Prefix = "web/";

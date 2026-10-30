@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Win32;
 
-namespace Armsport;
+namespace Rukoborec;
 
 /// <summary>Номер компьютера по оборудованию: не переносится копированием папки с данными.</summary>
 internal static class HardwareId

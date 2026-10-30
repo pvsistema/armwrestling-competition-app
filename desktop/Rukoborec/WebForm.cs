@@ -1,7 +1,7 @@
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace Armsport;
+namespace Rukoborec;
 
 /// <summary>Окно с интерфейсом программы на WebView2.</summary>
 internal class WebForm : Form
@@ -26,7 +26,7 @@ internal class WebForm : Form
 
     private static Icon? LoadIcon()
     {
-        using var s = typeof(WebForm).Assembly.GetManifestResourceStream("Armsport.app.ico");
+        using var s = typeof(WebForm).Assembly.GetManifestResourceStream("Rukoborec.app.ico");
         return s is null ? null : new Icon(s);
     }
 
@@ -40,7 +40,7 @@ internal class WebForm : Form
         catch (Exception ex)
         {
             MessageBox.Show(this, "Не удалось запустить встроенный браузер WebView2:\n" + ex.Message,
-                "Армспорт", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "Рукоборец", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Close();
             return;
         }
