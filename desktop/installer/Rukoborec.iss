@@ -55,6 +55,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent
+; После тихой установки обновления из программы — сразу запустить новую версию
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
 
 ; Данные турниров и активация лежат в %LOCALAPPDATA%\Armsport (служебное имя, не менять) — при удалении и обновлении
 ; программы они сохраняются.

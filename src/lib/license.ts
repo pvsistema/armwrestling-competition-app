@@ -31,7 +31,7 @@ export const REASON_TEXT: Record<Reason, string> = {
 };
 
 /** Открытый ключ сервера активации: им проверяется подпись подтверждения. */
-const SERVER_PUB = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcZ1yAYZ/vDEXD0E+4MGrhNuap/f7KnckVvOq/KBzwfmDpT/aoPuU+6gMtOBi5+F7FoPijWj1wraMEVGa2a/DXw==";
+export const SERVER_PUB = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcZ1yAYZ/vDEXD0E+4MGrhNuap/f7KnckVvOq/KBzwfmDpT/aoPuU+6gMtOBi5+F7FoPijWj1wraMEVGa2a/DXw==";
 const TKEY = "armsport-license-t";
 const CLOCK_SLACK = 2 * 86400000;
 

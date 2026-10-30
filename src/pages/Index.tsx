@@ -24,6 +24,7 @@ import HandDoneDialog from "@/components/arm/HandDoneDialog";
 import ImportAthletes from "@/components/arm/ImportAthletes";
 import IntakePanel from "@/components/cabinet/IntakePanel";
 import StallAlert from "@/components/arm/StallAlert";
+import UpdateBanner from "@/components/arm/UpdateBanner";
 import LicenseButton from "@/components/arm/LicenseButton";
 import DemoMark from "@/components/arm/DemoMark";
 import Icon from "@/components/ui/icon";
@@ -59,6 +60,7 @@ function Shell() {
           ))}
         </div>
       )}
+      <UpdateBanner place="header" />
       <AutoBackupBadge />
       <LicenseButton />
       <HelpSheet />
@@ -77,6 +79,7 @@ function Shell() {
           <AppHeader section={section} onSection={setSection} right={right} />
         </div>
         <main className="flex flex-1 flex-col gap-3">
+          <UpdateBanner place="main" />
           <ObsPublisher />
           <PrintFooter />
           <RestoreBackup />

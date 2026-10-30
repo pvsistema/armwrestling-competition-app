@@ -6,6 +6,7 @@ import secrets
 import time
 from datetime import date
 
+import boto3
 import psycopg2
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -200,8 +201,113 @@ def admin_action(cur, action: str, body: dict) -> dict:
     return resp(400, {"error": "unknown action"})
 
 
+PART_MAX = 2 * 1024 * 1024
+REL_COLS = "id, version, notes, file_url, file_name, file_size, sha256, parts, mandatory, published, created_at, published_at"
+
+
+def s3():
+    return boto3.client("s3", endpoint_url="https://bucket.poehali.dev",
+                        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"], aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
+
+
+def part_key(rid: int, n: int) -> str:
+    return f"releases/{rid}/part{n:03d}.bin"
+
+
+def cdn(key: str) -> str:
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+
+def ver_ok(v: str) -> bool:
+    p = v.split(".")
+    return 1 <= len(p) <= 4 and all(x.isdigit() and len(x) <= 5 for x in p)
+
+
+def sign_text(cur, text: str) -> str:
+    der = signer(cur)[0].sign(text.encode(), ec.ECDSA(hashes.SHA256()))
+    rr, ss = decode_dss_signature(der)
+    return b64u(rr.to_bytes(32, "big") + ss.to_bytes(32, "big"))
+
+
+def release_public(cur, r: dict) -> dict:
+    """Описание обновления для программы: части файла и подпись сервера (версия + SHA-256 + размер)."""
+    out = {"version": r["version"], "notes": r["notes"], "mandatory": r["mandatory"],
+           "published_at": r["published_at"], "file_name": r["file_name"], "size": r["file_size"], "url": r["file_url"]}
+    if r["parts"]:
+        out["parts"] = [cdn(part_key(r["id"], n)) for n in range(1, r["parts"] + 1)]
+        out["sha256"] = r["sha256"]
+        out["sig"] = sign_text(cur, f"rukoborec-update|{r['version']}|{r['sha256']}|{r['file_size']}")
+    return out
+
+
+def latest_release(cur) -> dict:
+    cur.execute(f"SELECT {REL_COLS} FROM app_releases WHERE published")
+    rows = [as_dict(cur, r) for r in cur.fetchall()]
+    if not rows:
+        return resp(200, {"release": None})
+    best = max(rows, key=lambda r: tuple(int(x) for x in r["version"].split(".")) + (0,) * 4)
+    return resp(200, {"release": release_public(cur, best)})
+
+
+def release_action(cur, action: str, body: dict) -> dict:
+    rid = int(body.get("id") or 0)
+    if action == "rel_list":
+        cur.execute(f"SELECT {REL_COLS} FROM app_releases ORDER BY created_at DESC")
+        return resp(200, {"releases": [as_dict(cur, r) for r in cur.fetchall()]})
+    if action == "rel_create":
+        version = clip(body.get("version"), 32)
+        if not ver_ok(version):
+            return resp(400, {"error": "Номер версии в формате 1.0.1"})
+        sha = clip(body.get("sha256"), 64).lower()
+        size = max(0, int(body.get("size") or 0))
+        url = clip(body.get("url"), 1000)
+        if sha and (len(sha) != 64 or not size):
+            return resp(400, {"error": "Неверные данные файла"})
+        if not sha and not url.startswith("https://"):
+            return resp(400, {"error": "Загрузите файл установщика или укажите ссылку https://"})
+        cur.execute(
+            "INSERT INTO app_releases (version, notes, file_url, file_name, file_size, sha256, mandatory) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (version, clip(body.get("notes"), 5000), url, clip(body.get("file_name"), 255), size, sha, bool(body.get("mandatory"))),
+        )
+        return resp(200, {"ok": True, "id": cur.fetchone()[0]})
+    if action == "rel_part":
+        n = int(body.get("n") or 0)
+        data = base64.b64decode(str(body.get("data") or ""))
+        if not rid or n < 1 or n > 500 or not data or len(data) > PART_MAX:
+            return resp(400, {"error": "Неверная часть файла"})
+        cur.execute("SELECT published FROM app_releases WHERE id = %s", (rid,))
+        r = cur.fetchone()
+        if not r or r[0]:
+            return resp(400, {"error": "Версия не найдена или уже опубликована"})
+        s3().put_object(Bucket="files", Key=part_key(rid, n), Body=data, ContentType="application/octet-stream")
+        cur.execute("UPDATE app_releases SET parts = GREATEST(parts, %s) WHERE id = %s", (n, rid))
+        return resp(200, {"ok": True})
+    if action == "rel_publish":
+        cur.execute(f"SELECT {REL_COLS} FROM app_releases WHERE id = %s", (rid,))
+        r = cur.fetchone()
+        if not r:
+            return resp(404, {"error": "Версия не найдена"})
+        r = as_dict(cur, r)
+        if r["sha256"] and r["parts"] != -(-r["file_size"] // PART_MAX):
+            return resp(400, {"error": "Файл загружен не полностью — загрузите версию заново"})
+        on = bool(body.get("on", True))
+        cur.execute("UPDATE app_releases SET published = %s, published_at = CASE WHEN %s THEN NOW() ELSE published_at END, mandatory = %s, notes = %s WHERE id = %s",
+                    (on, on, bool(body.get("mandatory", r["mandatory"])), clip(body.get("notes", r["notes"]), 5000), rid))
+        return resp(200, {"ok": True})
+    if action == "rel_delete":
+        cur.execute("SELECT parts FROM app_releases WHERE id = %s", (rid,))
+        r = cur.fetchone()
+        if r and r[0]:
+            c = s3()
+            for n in range(1, r[0] + 1):
+                c.delete_object(Bucket="files", Key=part_key(rid, n))
+        cur.execute("DELETE FROM app_releases WHERE id = %s", (rid,))
+        return resp(200, {"ok": True})
+    return resp(400, {"error": "unknown action"})
+
+
 def handler(event: dict, context) -> dict:
-    """Ключи активации полной версии: активация и проверка на компьютере пользователя, выдача и управление ключами в админ-панели."""
+    """Ключи активации и обновления программы: активация и проверка на компьютере, выдача ключей и публикация новых версий в админ-панели."""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
     if event.get("httpMethod") != "POST":
@@ -209,7 +315,7 @@ def handler(event: dict, context) -> dict:
     body = json.loads(event.get("body") or "{}")
     action = str(body.get("action") or "")
 
-    is_admin = action in ("list", "create", "update", "release", "delete", "login")
+    is_admin = action in ("list", "create", "update", "release", "delete", "login") or action.startswith("rel_")
     if is_admin:
         headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
         pwd = os.environ.get("ADMIN_PASSWORD", "")
@@ -227,13 +333,25 @@ def handler(event: dict, context) -> dict:
         finally:
             conn.close()
         return resp(200, {"spki": spki})
+    elif action == "latest":
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            with conn.cursor() as cur:
+                r = latest_release(cur)
+            conn.commit()
+            return r
+        finally:
+            conn.close()
     elif action not in ("activate", "check", "rebind"):
         return resp(400, {"error": "unknown action"})
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         with conn.cursor() as cur:
-            r = admin_action(cur, action, body) if is_admin else client_action(cur, action, body)
+            if action.startswith("rel_"):
+                r = release_action(cur, action, body)
+            else:
+                r = admin_action(cur, action, body) if is_admin else client_action(cur, action, body)
         conn.commit()
         return r
     finally:

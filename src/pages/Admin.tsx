@@ -4,6 +4,7 @@ import Logo from "@/components/arm/Logo";
 import { LICENSE_URL } from "@/lib/license";
 import { cn } from "@/lib/utils";
 import AdminReps from "@/components/cabinet/AdminReps";
+import AdminReleases from "@/components/admin/AdminReleases";
 
 interface Device {
   id: number;
@@ -271,7 +272,7 @@ export default function Admin() {
   const [fresh, setFresh] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
-  const [tab, setTab] = useState<"keys" | "reps">("keys");
+  const [tab, setTab] = useState<"keys" | "reps" | "releases">("keys");
 
   useEffect(() => {
     document.title = "Админ-панель — Рукоборец";
@@ -366,7 +367,7 @@ export default function Admin() {
       </div>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             className={cn("pill", tab === "keys" && "pill-on")}
             onClick={() => setTab("keys")}
@@ -379,7 +380,14 @@ export default function Admin() {
           >
             <Icon name="Users" size={16} /> Представители команд
           </button>
+          <button
+            className={cn("pill", tab === "releases" && "pill-on")}
+            onClick={() => setTab("releases")}
+          >
+            <Icon name="Rocket" size={16} /> Обновления программы
+          </button>
         </div>
+        {tab === "releases" && <AdminReleases pass={pass} />}
         {tab === "reps" && <AdminReps pass={pass} />}
         {tab === "keys" && (
           <>

@@ -14,6 +14,11 @@ internal sealed class MainForm : WebForm
         WindowState = FormWindowState.Maximized;
         FormClosing += (_, e) =>
         {
+            if (Program.Quitting)
+            {
+                _board?.Close();
+                return;
+            }
             var r = MessageBox.Show(this, "Закрыть программу? Данные турнира сохранены на этом компьютере.",
                 "Рукоборец", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
             if (r != DialogResult.Yes) e.Cancel = true;
@@ -24,6 +29,7 @@ internal sealed class MainForm : WebForm
     protected override void Configure(CoreWebView2 core)
     {
         core.Settings.AreBrowserAcceleratorKeysEnabled = true;
+        Updater.Attach(core, this);
     }
 
     /// <summary>window.open: табло — в своё окно, PDF для печати — во встроенное окно, ссылки — в браузер.</summary>

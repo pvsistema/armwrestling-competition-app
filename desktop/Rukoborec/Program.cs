@@ -7,6 +7,9 @@ internal static class Program
     public const string Host = "app.armsport";
     public static string StartUrl => $"https://{Host}/index.html";
 
+    /// <summary>Закрытие ради установки обновления — без вопроса «Закрыть программу?».</summary>
+    public static bool Quitting { get; set; }
+
     /// <summary>Номер версии из desktop/version.txt (вшивается при сборке).</summary>
     public static string Version { get; } = FormatVersion(typeof(Program).Assembly.GetName().Version);
 

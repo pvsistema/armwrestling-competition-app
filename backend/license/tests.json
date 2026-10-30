@@ -43,6 +43,24 @@
     "action": "pubkey"
    },
    "expectedStatus": 200
+  },
+  {
+   "name": "Последняя версия программы",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "latest"
+   },
+   "expectedStatus": 200
+  },
+  {
+   "name": "Публикация без пароля",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "rel_list"
+   },
+   "expectedStatus": 401
   }
  ]
 }
