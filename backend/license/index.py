@@ -4,9 +4,10 @@ import json
 import os
 import secrets
 import time
+import urllib.parse
+import urllib.request
 from datetime import date
 
-import boto3
 import psycopg2
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -201,21 +202,7 @@ def admin_action(cur, action: str, body: dict) -> dict:
     return resp(400, {"error": "unknown action"})
 
 
-PART_MAX = 2 * 1024 * 1024
-REL_COLS = "id, version, notes, file_url, file_name, file_size, sha256, parts, mandatory, published, created_at, published_at"
-
-
-def s3():
-    return boto3.client("s3", endpoint_url="https://bucket.poehali.dev",
-                        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"], aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"])
-
-
-def part_key(rid: int, n: int) -> str:
-    return f"releases/{rid}/part{n:03d}.bin"
-
-
-def cdn(key: str) -> str:
-    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+REL_COLS = "id, version, notes, file_url, file_name, file_size, sha256, mandatory, published, created_at, published_at"
 
 
 def ver_ok(v: str) -> bool:
@@ -229,12 +216,50 @@ def sign_text(cur, text: str) -> str:
     return b64u(rr.to_bytes(32, "big") + ss.to_bytes(32, "big"))
 
 
+YA_API = "https://cloud-api.yandex.net/v1/disk/public/resources"
+
+
+def link_kind(url: str) -> str:
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    if url.startswith("https://") and host == "cdn.poehali.dev":
+        return "cdn"
+    if url.startswith("https://") and (host in ("yadi.sk", "disk.yandex.ru", "disk.yandex.com", "disk.360.yandex.ru") or host.endswith(".yadi.sk")):
+        return "yadisk"
+    return ""
+
+
+def http_json(url: str, timeout: float = 4) -> dict:
+    req = urllib.request.Request(url, headers={"User-Agent": "Rukoborec-Updates/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def yadisk_meta(url: str) -> dict:
+    """Имя, размер и SHA-256 файла по публичной ссылке Яндекс Диска."""
+    try:
+        m = http_json(f"{YA_API}?public_key={urllib.parse.quote(url, safe='')}&fields=type,name,size,sha256")
+    except Exception:
+        raise ValueError("Яндекс Диск не отдаёт файл: проверьте, что ссылка публичная и открывается без входа")
+    if m.get("type") != "file":
+        raise ValueError("По ссылке папка, а не файл — откройте доступ к самому установщику")
+    return {"name": m.get("name") or "", "size": int(m.get("size") or 0), "sha256": (m.get("sha256") or "").lower()}
+
+
+def cdn_size(url: str) -> int:
+    try:
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Rukoborec-Updates/1.0"})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            return int(r.headers.get("Content-Length") or 0)
+    except Exception:
+        raise ValueError("Файл по ссылке не открывается — проверьте ссылку из Хранилища")
+
+
 def release_public(cur, r: dict) -> dict:
-    """Описание обновления для программы: части файла и подпись сервера (версия + SHA-256 + размер)."""
+    """Описание обновления для программы: ссылка на установщик и подпись сервера (версия + SHA-256 + размер)."""
     out = {"version": r["version"], "notes": r["notes"], "mandatory": r["mandatory"],
            "published_at": r["published_at"], "file_name": r["file_name"], "size": r["file_size"], "url": r["file_url"]}
-    if r["parts"]:
-        out["parts"] = [cdn(part_key(r["id"], n)) for n in range(1, r["parts"] + 1)]
+    out["kind"] = link_kind(r["file_url"])
+    if r["sha256"]:
         out["sha256"] = r["sha256"]
         out["sig"] = sign_text(cur, f"rukoborec-update|{r['version']}|{r['sha256']}|{r['file_size']}")
     return out
@@ -258,49 +283,45 @@ def release_action(cur, action: str, body: dict) -> dict:
         version = clip(body.get("version"), 32)
         if not ver_ok(version):
             return resp(400, {"error": "Номер версии в формате 1.0.1"})
-        sha = clip(body.get("sha256"), 64).lower()
-        size = max(0, int(body.get("size") or 0))
-        url = clip(body.get("url"), 1000)
-        if sha and (len(sha) != 64 or not size):
-            return resp(400, {"error": "Неверные данные файла"})
-        if not sha and not url.startswith("https://"):
-            return resp(400, {"error": "Загрузите файл установщика или укажите ссылку https://"})
+        url = clip(body.get("url"), 1000).strip()
+        kind = link_kind(url)
+        if not kind:
+            return resp(400, {"error": "Нужна ссылка из Хранилища (https://cdn.poehali.dev/…) или публичная ссылка Яндекс Диска"})
+        cur.execute("SELECT 1 FROM app_releases WHERE version = %s", (version,))
+        if cur.fetchone():
+            return resp(400, {"error": f"Версия {version} уже есть — удалите её или укажите другой номер"})
+        try:
+            if kind == "yadisk":
+                m = yadisk_meta(url)
+                name, size, sha = m["name"], m["size"], m["sha256"]
+            else:
+                size = cdn_size(url)
+                sha = clip(body.get("sha256"), 64).lower()
+                name = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+                if int(body.get("size") or 0) != size:
+                    return resp(400, {"error": "Размер файла не совпал — обновите страницу и попробуйте ещё раз"})
+        except ValueError as e:
+            return resp(400, {"error": str(e)})
+        if len(sha) != 64 or not size:
+            return resp(400, {"error": "Не удалось получить контрольную сумму файла"})
+        publish = bool(body.get("publish", True))
         cur.execute(
-            "INSERT INTO app_releases (version, notes, file_url, file_name, file_size, sha256, mandatory) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (version, clip(body.get("notes"), 5000), url, clip(body.get("file_name"), 255), size, sha, bool(body.get("mandatory"))),
+            "INSERT INTO app_releases (version, notes, file_url, file_name, file_size, sha256, mandatory, published, published_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CASE WHEN %s THEN NOW() ELSE NULL END) RETURNING id",
+            (version, clip(body.get("notes"), 5000), url, clip(name, 255), size, sha, bool(body.get("mandatory")), publish, publish),
         )
-        return resp(200, {"ok": True, "id": cur.fetchone()[0]})
-    if action == "rel_part":
-        n = int(body.get("n") or 0)
-        data = base64.b64decode(str(body.get("data") or ""))
-        if not rid or n < 1 or n > 500 or not data or len(data) > PART_MAX:
-            return resp(400, {"error": "Неверная часть файла"})
-        cur.execute("SELECT published FROM app_releases WHERE id = %s", (rid,))
-        r = cur.fetchone()
-        if not r or r[0]:
-            return resp(400, {"error": "Версия не найдена или уже опубликована"})
-        s3().put_object(Bucket="files", Key=part_key(rid, n), Body=data, ContentType="application/octet-stream")
-        cur.execute("UPDATE app_releases SET parts = GREATEST(parts, %s) WHERE id = %s", (n, rid))
-        return resp(200, {"ok": True})
+        return resp(200, {"ok": True, "id": cur.fetchone()[0], "size": size, "name": name})
     if action == "rel_publish":
         cur.execute(f"SELECT {REL_COLS} FROM app_releases WHERE id = %s", (rid,))
         r = cur.fetchone()
         if not r:
             return resp(404, {"error": "Версия не найдена"})
         r = as_dict(cur, r)
-        if r["sha256"] and r["parts"] != -(-r["file_size"] // PART_MAX):
-            return resp(400, {"error": "Файл загружен не полностью — загрузите версию заново"})
         on = bool(body.get("on", True))
         cur.execute("UPDATE app_releases SET published = %s, published_at = CASE WHEN %s THEN NOW() ELSE published_at END, mandatory = %s, notes = %s WHERE id = %s",
                     (on, on, bool(body.get("mandatory", r["mandatory"])), clip(body.get("notes", r["notes"]), 5000), rid))
         return resp(200, {"ok": True})
     if action == "rel_delete":
-        cur.execute("SELECT parts FROM app_releases WHERE id = %s", (rid,))
-        r = cur.fetchone()
-        if r and r[0]:
-            c = s3()
-            for n in range(1, r[0] + 1):
-                c.delete_object(Bucket="files", Key=part_key(rid, n))
         cur.execute("DELETE FROM app_releases WHERE id = %s", (rid,))
         return resp(200, {"ok": True})
     return resp(400, {"error": "unknown action"})

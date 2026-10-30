@@ -8,18 +8,19 @@ namespace Rukoborec;
 
 /// <summary>
 /// Обновление программы. Интерфейс сам узнаёт о новой версии у сервера и присылает команду
-/// { type: "update", version, parts, sha256, size, sig }. Программа проверяет подпись сервера,
-/// скачивает установщик по частям, сверяет SHA-256 и запускает его — новая версия ставится поверх.
+/// { type: "update", version, url, kind, sha256, size, sig }. Программа проверяет подпись сервера,
+/// скачивает установщик (Хранилище poehali.dev или Яндекс Диск), сверяет SHA-256 и запускает его.
 /// </summary>
 internal static class Updater
 {
     /// <summary>Открытый ключ сервера активации (тот же, что проверяет ключи).</summary>
     private const string ServerPub = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcZ1yAYZ/vDEXD0E+4MGrhNuap/f7KnckVvOq/KBzwfmDpT/aoPuU+6gMtOBi5+F7FoPijWj1wraMEVGa2a/DXw==";
-    private const string CdnPrefix = "https://cdn.poehali.dev/";
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(5) };
+    private const string YaApi = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=";
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(30) };
     private static bool _busy;
 
-    private sealed record Req(string type, string version, string[] parts, string sha256, long size, string sig);
+    private sealed record Req(string type, string version, string url, string kind, string sha256, long size, string sig);
+    private sealed record YaHref(string href);
 
     public static void Attach(CoreWebView2 core, Form owner)
     {
@@ -50,13 +51,26 @@ internal static class Updater
             var dir = Path.Combine(Path.GetTempPath(), "Rukoborec-update");
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, $"Rukoborec-Setup-{r.version}.exe");
-            await using (var fs = File.Create(file))
+            var src = await DirectUrl(r);
+            using (var res = await Http.GetAsync(src, HttpCompletionOption.ResponseHeadersRead))
             {
-                for (var i = 0; i < r.parts.Length; i++)
+                res.EnsureSuccessStatusCode();
+                await using var input = await res.Content.ReadAsStreamAsync();
+                await using var fs = File.Create(file);
+                var buf = new byte[81920];
+                long done = 0;
+                var last = -1;
+                int n;
+                while ((n = await input.ReadAsync(buf)) > 0)
                 {
-                    var bytes = await Http.GetByteArrayAsync(r.parts[i]);
-                    await fs.WriteAsync(bytes);
-                    Post(core, "progress", "", (int)((i + 1) * 100L / r.parts.Length));
+                    await fs.WriteAsync(buf.AsMemory(0, n));
+                    done += n;
+                    var pct = (int)(done * 100 / Math.Max(1, r.size));
+                    if (pct != last && pct <= 100)
+                    {
+                        last = pct;
+                        Post(core, "progress", "", pct);
+                    }
                 }
             }
             var info = new FileInfo(file);
@@ -91,10 +105,30 @@ internal static class Updater
         }
     }
 
+    /// <summary>Прямая ссылка на файл: для Яндекс Диска — через его открытый API.</summary>
+    private static async Task<string> DirectUrl(Req r)
+    {
+        if (r.kind != "yadisk") return r.url;
+        var json = await Http.GetStringAsync(YaApi + Uri.EscapeDataString(r.url));
+        return JsonSerializer.Deserialize<YaHref>(json)?.href ?? throw new InvalidOperationException("Яндекс Диск не отдал ссылку на файл");
+    }
+
+    private static bool AllowedUrl(Req r)
+    {
+        if (!Uri.TryCreate(r.url, UriKind.Absolute, out var u) || u.Scheme != "https") return false;
+        var h = u.Host.ToLowerInvariant();
+        return r.kind switch
+        {
+            "cdn" => h == "cdn.poehali.dev",
+            "yadisk" => h is "yadi.sk" or "disk.yandex.ru" or "disk.yandex.com" or "disk.360.yandex.ru" || h.EndsWith(".yadi.sk"),
+            _ => false,
+        };
+    }
+
     private static bool Verify(Req r)
     {
-        if (r.parts is not { Length: > 0 } || r.size <= 0 || r.sha256 is not { Length: 64 } || string.IsNullOrEmpty(r.sig) || string.IsNullOrEmpty(r.version)) return false;
-        if (r.parts.Any(p => !p.StartsWith(CdnPrefix, StringComparison.Ordinal))) return false;
+        if (r.size <= 0 || r.sha256 is not { Length: 64 } || string.IsNullOrEmpty(r.sig) || string.IsNullOrEmpty(r.version)) return false;
+        if (!AllowedUrl(r)) return false;
         try
         {
             using var ecdsa = ECDsa.Create();

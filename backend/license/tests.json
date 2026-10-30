@@ -61,6 +61,15 @@
     "action": "rel_list"
    },
    "expectedStatus": 401
+  },
+  {
+   "name": "Ссылка не из хранилища",
+   "method": "POST",
+   "path": "/",
+   "body": {
+    "action": "rel_create"
+   },
+   "expectedStatus": 401
   }
  ]
 }

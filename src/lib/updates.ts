@@ -10,7 +10,7 @@ export interface Release {
   file_name: string;
   size: number;
   url: string;
-  parts?: string[];
+  kind?: "cdn" | "yadisk" | "";
   sha256?: string;
   sig?: string;
 }
@@ -49,7 +49,7 @@ const b64 = (s: string) => {
 
 /** Подпись сервера на версию, SHA-256 и размер файла. */
 export async function verifyRelease(r: Release): Promise<boolean> {
-  if (!r.sig || !r.sha256 || !r.parts?.length || !crypto?.subtle) return false;
+  if (!r.sig || !r.sha256 || !r.url || !crypto?.subtle) return false;
   try {
     const key = await crypto.subtle.importKey("spki", b64(SERVER_PUB), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
     return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, b64(r.sig), new TextEncoder().encode(`rukoborec-update|${r.version}|${r.sha256}|${r.size}`));
@@ -58,32 +58,18 @@ export async function verifyRelease(r: Release): Promise<boolean> {
   }
 }
 
-const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
-
-/** Скачивает установщик по частям в браузере, сверяет подпись и SHA-256, сохраняет файл. */
-export async function downloadRelease(r: Release, onPct: (n: number) => void) {
-  if (!r.parts?.length) {
-    window.open(r.url, "_blank", "noopener");
+/** В браузере: Хранилище — скачивание напрямую, Яндекс Диск — открыть страницу файла. */
+export async function downloadRelease(r: Release) {
+  if (r.kind === "cdn") {
+    const a = document.createElement("a");
+    a.href = r.url;
+    a.download = r.file_name || `Rukoborec-Setup-${r.version}.exe`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     return;
   }
-  if (!(await verifyRelease(r))) throw new Error("Подпись обновления не прошла проверку");
-  const chunks: ArrayBuffer[] = [];
-  for (let i = 0; i < r.parts.length; i++) {
-    const res = await fetch(r.parts[i], { cache: "no-store" });
-    if (!res.ok) throw new Error(`Часть ${i + 1} не скачалась`);
-    chunks.push(await res.arrayBuffer());
-    onPct(Math.round(((i + 1) * 100) / r.parts.length));
-  }
-  const blob = new Blob(chunks, { type: "application/octet-stream" });
-  const h = hex(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
-  if (blob.size !== r.size || h !== r.sha256) throw new Error("Файл скачался с ошибкой — попробуйте ещё раз");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = r.file_name || `Rukoborec-Setup-${r.version}.exe`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  window.open(r.url, "_blank", "noopener");
 }
 
 type WebView = { postMessage: (m: unknown) => void; addEventListener: (t: "message", f: (e: { data: unknown }) => void) => void; removeEventListener: (t: "message", f: (e: { data: unknown }) => void) => void };

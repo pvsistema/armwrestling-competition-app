@@ -34,23 +34,17 @@ export default function UpdateBanner({ place }: { place: "header" | "main" }) {
 
   const install = async () => {
     const wv = webview();
-    if (u.desktop && wv && r.parts?.length) {
+    if (u.desktop && wv && r.sha256 && (r.kind === "cdn" || r.kind === "yadisk")) {
       if (!(await verifyRelease(r))) return toast({ title: "Подпись обновления не прошла проверку", variant: "destructive" });
       setPct(0);
       heard.current = false;
-      wv.postMessage({ type: "update", version: r.version, parts: r.parts, sha256: r.sha256, size: r.size, sig: r.sig });
+      wv.postMessage({ type: "update", version: r.version, url: r.url, kind: r.kind, sha256: r.sha256, size: r.size, sig: r.sig });
       await new Promise((ok) => setTimeout(ok, 5000));
       if (heard.current) return;
-    }
-    try {
-      setPct(0);
-      await downloadRelease(r, setPct);
-      toast({ title: `Установщик ${r.version} скачан`, description: "Запустите его из папки «Загрузки» — новая версия встанет поверх старой, турниры сохранятся." });
-    } catch (e) {
-      toast({ title: "Не удалось скачать", description: (e as Error).message, variant: "destructive" });
-    } finally {
       setPct(null);
     }
+    await downloadRelease(r);
+    if (u.desktop) toast({ title: `Установщик ${r.version}`, description: "Запустите скачанный файл — новая версия встанет поверх старой, турниры сохранятся." });
   };
 
   if (!u.desktop) {
